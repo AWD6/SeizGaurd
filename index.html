@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Med Reminder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="phone">
+    <header>
+      <h2>Hey, Jacob 👋</h2>
+      <p>Today, 19 March</p>
+    </header>
+
+    <div class="med-list">
+      <div class="med-card">
+        <div class="icon">💊</div>
+        <div>
+          <h4>Detoxil 20mg</h4>
+          <p>10:00 AM</p>
+        </div>
+      </div>
+
+      <div class="med-card">
+        <div class="icon">🧴</div>
+        <div>
+          <h4>Almagel 200ml</h4>
+          <p>12:00 PM</p>
+        </div>
+      </div>
+
+      <div class="med-card">
+        <div class="icon">💉</div>
+        <div>
+          <h4>Algopen</h4>
+          <p>07:00 PM</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="add-btn" onclick="showDetail()">+</button>
+  </div>
+
+  <div class="phone hidden" id="detail">
+    <header>
+      <button onclick="back()">← Back</button>
+      <h2>Detoxil</h2>
+    </header>
+
+    <div class="detail-box">
+      <h3>60 mg</h3>
+      <p>3 Pills / day</p>
+
+      <h4>Schedule</h4>
+      <ul>
+        <li>10:00 AM</li>
+        <li>14:00 PM</li>
+        <li>19:00 PM</li>
+      </ul>
+
+      <button class="log-btn">Log Medication</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
