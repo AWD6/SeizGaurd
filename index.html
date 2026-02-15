@@ -1,67 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <title>Med Reminder</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>SeizGuard ชักไม่ซ้ำ</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="phone">
-    <header>
-      <h2>Hey, Jacob 👋</h2>
-      <p>Today, 19 March</p>
-    </header>
 
-    <div class="med-list">
-      <div class="med-card">
-        <div class="icon">💊</div>
-        <div>
-          <h4>Detoxil 20mg</h4>
-          <p>10:00 AM</p>
-        </div>
-      </div>
+<div class="app">
 
-      <div class="med-card">
-        <div class="icon">🧴</div>
-        <div>
-          <h4>Almagel 200ml</h4>
-          <p>12:00 PM</p>
-        </div>
-      </div>
+  <header>
+    <h1>SeizGuard</h1>
+    <span>ชักไม่ซ้ำ</span>
+  </header>
 
-      <div class="med-card">
-        <div class="icon">💉</div>
-        <div>
-          <h4>Algopen</h4>
-          <p>07:00 PM</p>
-        </div>
-      </div>
-    </div>
-
-    <button class="add-btn" onclick="showDetail()">+</button>
-  </div>
-
-  <div class="phone hidden" id="detail">
-    <header>
-      <button onclick="back()">← Back</button>
-      <h2>Detoxil</h2>
-    </header>
-
-    <div class="detail-box">
-      <h3>60 mg</h3>
-      <p>3 Pills / day</p>
-
-      <h4>Schedule</h4>
-      <ul>
-        <li>10:00 AM</li>
-        <li>14:00 PM</li>
-        <li>19:00 PM</li>
-      </ul>
-
-      <button class="log-btn">Log Medication</button>
+  <div class="profile">
+    <div class="avatar">👤</div>
+    <div class="info">
+      <p>ผู้ป่วย: นายสมชาย</p>
+      <p>ยาวันนี้: 2 รายการ</p>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <div class="medicine-card">
+    <h2>ยาที่ต้องรับประทาน</h2>
+    <div class="med-item">
+      <p>Levetiracetam 500 mg</p>
+      <small>เช้า - เย็น</small>
+      <div class="actions">
+        <button class="taken" onclick="takeMed()">กินแล้ว</button>
+        <button class="missed" onclick="missMed()">ยังไม่ได้กิน</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button onclick="showPage('medicine')">💊 ยาของฉัน</button>
+    <button onclick="showPage('log')">📝 บันทึกอาการ</button>
+    <button onclick="showPage('edu')">📖 ความรู้</button>
+    <button onclick="showPage('care')">👩‍⚕️ ผู้ดูแล</button>
+    <button onclick="showPage('sos')" class="sos">🚨 ฉุกเฉิน</button>
+  </div>
+
+</div>
+
+<div id="medicine" class="page hidden">
+  <h2>รายการยา</h2>
+  <p>Levetiracetam 500 mg เช้า-เย็น</p>
+  <button onclick="goHome()">กลับ</button>
+</div>
+
+<div id="log" class="page hidden">
+  <h2>บันทึกอาการ</h2>
+  <input type="text" id="symptom" placeholder="กรอกอาการ">
+  <button onclick="saveLog()">บันทึก</button>
+  <div id="logList"></div>
+  <button onclick="goHome()">กลับ</button>
+</div>
+
+<div id="edu" class="page hidden">
+  <h2>ความรู้โรคลมชัก</h2>
+  <p>ควรกินยาสม่ำเสมอเพื่อป้องกันการชักซ้ำ</p>
+  <p>หากมีอาการชัก ให้นอนตะแคง ห้ามงัดปาก</p>
+  <button onclick="goHome()">กลับ</button>
+</div>
+
+<div id="care" class="page hidden">
+  <h2>สำหรับผู้ดูแล</h2>
+  <p>ตรวจสอบว่าผู้ป่วยกินยาครบทุกวัน</p>
+  <button onclick="goHome()">กลับ</button>
+</div>
+
+<div id="sos" class="page hidden">
+  <h2>ฉุกเฉิน</h2>
+  <button class="sos big" onclick="alert('โทร 1669')">โทร 1669</button>
+  <button onclick="goHome()">กลับ</button>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
