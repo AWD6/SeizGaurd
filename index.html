@@ -221,10 +221,20 @@
           <div class="dt-item"><i class="fas fa-calendar"></i><span id="seizureDate"></span></div>
           <div class="dt-item"><i class="fas fa-clock"></i><span id="seizureTime"></span></div>
         </div>
-        <label class="field-label">ระยะเวลา</label>
-        <input type="text" id="seizureDuration" class="field-input" placeholder="เช่น 2 นาที, 30 วินาที">
-        <label class="field-label">ความรุนแรง</label>
-        <div class="severity-picker" id="seizureSeverity"></div>
+        <label class="field-label">ระยะเวลาที่ชัก</label>
+        <select id="seizureDuration" class="field-input" onchange="calculateSeizureSeverity()">
+          <option value="">-- เลือกระยะเวลา --</option>
+          <option value="< 30 วินาที">&lt; 30 วินาที</option>
+          <option value="30-60 วินาที">30-60 วินาที</option>
+          <option value="1-2 นาที">1-2 นาที</option>
+          <option value="2-5 นาที">2-5 นาที</option>
+          <option value="> 5 นาที">&gt; 5 นาที</option>
+        </select>
+        <label class="field-label">ความรุนแรง (คำนวณอัตโนมัติ)</label>
+        <div id="seizureSeverityDisplay" class="severity-auto-display">
+          <div class="sev-badge-large" id="seizureSevBadge">-</div>
+          <div class="sev-text-large" id="seizureSevLabel">กรุณาเลือกระยะเวลาและอาการ</div>
+        </div>
         <div class="severity-desc" id="seizureSeverityDesc"></div>
         <label class="field-label">อาการ (เลือกได้หลายข้อ)</label>
         <div class="chip-grid" id="seizureSymptoms"></div>
@@ -248,8 +258,11 @@
         </div>
         <label class="field-label">ยาที่สงสัย</label>
         <div class="chip-grid" id="sideEffectMeds"></div>
-        <label class="field-label">ความรุนแรง</label>
-        <div class="severity-picker" id="sideEffectSeverity"></div>
+        <label class="field-label">ความรุนแรง (คำนวณอัตโนมัติ)</label>
+        <div id="sideEffectSeverityDisplay" class="severity-auto-display">
+          <div class="sev-badge-large" id="sideEffectSevBadge">-</div>
+          <div class="sev-text-large" id="sideEffectSevLabel">กรุณาเลือกอาการข้างเคียง</div>
+        </div>
         <div class="severity-desc" id="sideEffectSeverityDesc"></div>
         <label class="field-label">อาการข้างเคียง (เลือกได้หลายข้อ)</label>
         <div class="chip-grid" id="sideEffectSymptoms"></div>
