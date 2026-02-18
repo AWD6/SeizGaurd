@@ -20,42 +20,219 @@ const TIME_PRESETS = [
 ];
 
 const SEIZURE_SYMPTOMS = [
-  'เกร็งทั้งตัว','กระตุกแขนขา','เหม่อนิ่ง','ตาค้าง/กลอกตา',
-  'หมดสติ','กัดลิ้น','อาเจียน','ปัสสาวะราด',
-  'สับสนหลังชัก','ปวดศีรษะ','อ่อนแรงแขน/ขา','พูดไม่ได้ชั่วคราว',
+  { name: 'เกร็งทั้งตัว', weight: 2 },
+  { name: 'กระตุกแขนขา', weight: 2 },
+  { name: 'เหม่อนิ่ง', weight: 1 },
+  { name: 'ตาค้าง/กลอกตา', weight: 1 },
+  { name: 'หมดสติ', weight: 3 },
+  { name: 'กัดลิ้น', weight: 3 },
+  { name: 'อาเจียน', weight: 2 },
+  { name: 'ปัสสาวะราด', weight: 2 },
+  { name: 'สับสนหลังชัก', weight: 2 },
+  { name: 'ปวดศีรษะ', weight: 1 },
+  { name: 'อ่อนแรงแขน/ขา', weight: 2 },
+  { name: 'พูดไม่ได้ชั่วคราว', weight: 2 },
+  { name: 'หยุดหายใจ/หน้าเขียว', weight: 5 }
 ];
 
-const SIDE_EFFECTS = [
-  'เวียนศีรษะ','มึนงง','ง่วงนอน','คลื่นไส้','อาเจียน','ผื่นผิวหนัง',
-  'น้ำหนักเพิ่ม','ผมร่วง','เหงือกบวม','ตาพร่า/เห็นภาพซ้อน',
-  'หงุดหงิด','นอนไม่หลับ','อ่อนเพลีย','เบื่ออาหาร','ท้องเสีย','มือสั่น',
+// อาการข้างเคียงทั่วไปของยากันชัก (ใช้เมื่อยังไม่ได้เลือกยา)
+const SIDE_EFFECTS_LIST = [
+  { name: 'เวียนศีรษะ', weight: 1 },
+  { name: 'มึนงง', weight: 1 },
+  { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1 },
+  { name: 'คลื่นไส้', weight: 2 },
+  { name: 'อาเจียน', weight: 3 },
+  { name: 'ปวดศีรษะ', weight: 1 },
+  { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2 },
+  { name: 'เดินเซ/ทรงตัวไม่ดี', weight: 2 },
+  { name: 'ผื่นผิวหนัง', weight: 4 },
+  { name: 'ผื่นรุนแรง/ปากพอง (SJS)', weight: 5 },
+  { name: 'ตัวเหลือง/ตาเหลือง', weight: 5 },
+  { name: 'หงุดหงิด/อารมณ์แปรปรวน', weight: 2 },
+  { name: 'นอนไม่หลับ', weight: 1 },
+  { name: 'เบื่ออาหาร', weight: 1 },
+  { name: 'น้ำหนักเพิ่ม', weight: 1 },
+  { name: 'ผมร่วง', weight: 1 },
+  { name: 'มือสั่น', weight: 2 },
+  { name: 'ความจำ/สมาธิลดลง', weight: 2 }
 ];
+
+// อาการข้างเคียงเฉพาะของยาแต่ละตัว
+const AED_SIDE_EFFECTS = {
+  'Phenytoin': [
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'บ่อย' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี (Ataxia)', weight: 2, freq: 'บ่อย' },
+    { name: 'เหงือกบวม (Gingival Hyperplasia)', weight: 2, freq: 'บ่อย' },
+    { name: 'ขนดก/ผมขึ้นมาก (Hirsutism)', weight: 1, freq: 'พบได้' },
+    { name: 'สิว/ผิวหยาบ', weight: 1, freq: 'พบได้' },
+    { name: 'คลื่นไส้/อาเจียน', weight: 2, freq: 'พบได้' },
+    { name: 'ผื่นผิวหนัง', weight: 4, freq: 'พบได้' },
+    { name: 'ผื่นรุนแรง/ปากพอง (SJS/TEN)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ตัวเหลือง/ตาเหลือง (ตับอักเสบ)', weight: 5, freq: 'หายาก' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'พบได้' },
+  ],
+  'Carbamazepine': [
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'บ่อย' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี (Ataxia)', weight: 2, freq: 'บ่อย' },
+    { name: 'คลื่นไส้/อาเจียน', weight: 2, freq: 'บ่อย' },
+    { name: 'โซเดียมในเลือดต่ำ (Hyponatremia)', weight: 3, freq: 'พบได้' },
+    { name: 'ผื่นผิวหนัง', weight: 4, freq: 'พบได้' },
+    { name: 'ผื่นรุนแรง/ปากพอง (SJS/TEN)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'เม็ดเลือดขาวต่ำ (Leukopenia)', weight: 4, freq: 'พบได้' },
+    { name: 'ตัวเหลือง/ตาเหลือง (ตับอักเสบ)', weight: 5, freq: 'หายาก' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'พบได้' },
+  ],
+  'Valproate (Depakine)': [
+    { name: 'คลื่นไส้/อาเจียน', weight: 2, freq: 'บ่อย' },
+    { name: 'น้ำหนักเพิ่ม', weight: 1, freq: 'บ่อย' },
+    { name: 'ผมร่วง', weight: 1, freq: 'บ่อย' },
+    { name: 'มือสั่น (Tremor)', weight: 2, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'พบได้' },
+    { name: 'ตับอักเสบ (Hepatotoxicity)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ตับอ่อนอักเสบ (Pancreatitis)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ตัวเหลือง/ตาเหลือง', weight: 5, freq: 'หายาก' },
+    { name: 'เกล็ดเลือดต่ำ (Thrombocytopenia)', weight: 4, freq: 'พบได้' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'พบได้' },
+  ],
+  'Levetiracetam (Keppra)': [
+    { name: 'หงุดหงิด/อารมณ์แปรปรวน', weight: 2, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'นอนไม่หลับ', weight: 1, freq: 'บ่อย' },
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'พบได้' },
+    { name: 'ปวดศีรษะ', weight: 1, freq: 'พบได้' },
+    { name: 'คลื่นไส้', weight: 2, freq: 'พบได้' },
+    { name: 'ซึมเศร้า/วิตกกังวล', weight: 3, freq: 'พบได้' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'พบได้' },
+    { name: 'ก้าวร้าว/พฤติกรรมเปลี่ยน', weight: 3, freq: 'พบได้ โดยเฉพาะในเด็ก' },
+  ],
+  'Lamotrigine': [
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ปวดศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'บ่อย' },
+    { name: 'คลื่นไส้', weight: 2, freq: 'บ่อย' },
+    { name: 'นอนไม่หลับ', weight: 1, freq: 'พบได้' },
+    { name: 'ผื่นผิวหนัง', weight: 4, freq: 'พบได้ (พบบ่อยในเด็ก)' },
+    { name: 'ผื่นรุนแรง/ปากพอง (SJS/TEN)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'พบได้' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี', weight: 2, freq: 'พบได้' },
+  ],
+  'Topiramate': [
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'บ่อย' },
+    { name: 'เบื่ออาหาร/น้ำหนักลด', weight: 1, freq: 'บ่อย' },
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'ปวดศีรษะ', weight: 1, freq: 'พบได้' },
+    { name: 'นิ่วในไต (Kidney Stones)', weight: 3, freq: 'พบได้' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'พบได้' },
+    { name: 'ชาปลายมือปลายเท้า (Paresthesia)', weight: 2, freq: 'พบได้' },
+    { name: 'กรดในเลือดสูง (Metabolic Acidosis)', weight: 4, freq: 'พบได้' },
+  ],
+  'Oxcarbazepine': [
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'บ่อย' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี', weight: 2, freq: 'บ่อย' },
+    { name: 'คลื่นไส้/อาเจียน', weight: 2, freq: 'บ่อย' },
+    { name: 'โซเดียมในเลือดต่ำ (Hyponatremia)', weight: 3, freq: 'พบได้บ่อยกว่า Carbamazepine' },
+    { name: 'ผื่นผิวหนัง', weight: 4, freq: 'พบได้' },
+    { name: 'ผื่นรุนแรง/ปากพอง (SJS/TEN)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ปวดศีรษะ', weight: 1, freq: 'พบได้' },
+  ],
+  'Gabapentin': [
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อย' },
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี (Ataxia)', weight: 2, freq: 'บ่อย' },
+    { name: 'น้ำหนักเพิ่ม', weight: 1, freq: 'บ่อย' },
+    { name: 'ตาพร่า/เห็นภาพซ้อน', weight: 2, freq: 'พบได้' },
+    { name: 'คลื่นไส้/อาเจียน', weight: 2, freq: 'พบได้' },
+    { name: 'บวมน้ำ (Peripheral Edema)', weight: 2, freq: 'พบได้' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'พบได้' },
+  ],
+  'Phenobarbital': [
+    { name: 'ง่วงนอน/อ่อนเพลีย', weight: 1, freq: 'บ่อยมาก' },
+    { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
+    { name: 'เดินเซ/ทรงตัวไม่ดี', weight: 2, freq: 'บ่อย' },
+    { name: 'ความจำ/สมาธิลดลง', weight: 2, freq: 'บ่อย' },
+    { name: 'ซึมเศร้า', weight: 3, freq: 'พบได้' },
+    { name: 'หงุดหงิด/อารมณ์แปรปรวน', weight: 2, freq: 'พบได้ (โดยเฉพาะในเด็ก)' },
+    { name: 'ผื่นผิวหนัง', weight: 4, freq: 'พบได้' },
+    { name: 'ผื่นรุนแรง/ปากพอง (SJS/TEN)', weight: 5, freq: 'หายาก แต่อันตราย' },
+    { name: 'ตับอักเสบ', weight: 5, freq: 'หายาก' },
+    { name: 'การพึ่งพายา (Dependence)', weight: 3, freq: 'พบได้เมื่อใช้นาน' },
+  ],
+};
+
+
 
 const SEVERITY_DESCRIPTIONS = {
   1: {
     label: 'เล็กน้อยมาก',
     color: 'var(--success)',
-    desc: 'อาการเพียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น รู้สึกชาเล็กน้อยชั่วคราว เหม่อนิ่งไม่กี่วินาที หรือผลข้างเคียงยาที่แทบไม่รู้สึก'
+    desc: 'อาการเพียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น รู้สึกชาเล็กน้อยชั่วคราว เหม่อนิ่งไม่กี่วินาที หรือผลข้างเคียงยาที่แทบไม่รู้สึก',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; ILAE Seizure Severity Scale'
   },
   2: {
     label: 'เล็กน้อย',
     color: 'var(--success)',
-    desc: 'อาการเล็กน้อย รบกวนเล็กน้อยแต่ยังทำกิจกรรมได้ตามปกติ เช่น กระตุกเฉพาะที่สั้นๆ มึนงงเล็กน้อย หรือรู้สึกง่วงเป็นบางเวลา'
+    desc: 'อาการเล็กน้อย รบกวนเล็กน้อยแต่ยังทำกิจกรรมได้ตามปกติ เช่น กระตุกเฉพาะที่สั้นๆ มึนงงเล็กน้อย หรือรู้สึกง่วงเป็นบางเวลา',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Liverpool Seizure Severity Scale'
   },
   3: {
     label: 'ปานกลาง',
     color: 'var(--warning)',
-    desc: 'อาการปานกลาง กระทบการใช้ชีวิตบ้าง ต้องหยุดพักกิจกรรม เช่น อาการชักที่มีเกร็ง/กระตุกชัดเจนแต่ไม่นาน คลื่นไส้ต้องนอนพัก หรือเวียนศีรษะจนเดินไม่ถนัด'
+    desc: 'อาการปานกลาง กระทบการใช้ชีวิตบ้าง ต้องหยุดพักกิจกรรม เช่น อาการชักที่มีเกร็ง/กระตุกชัดเจนแต่ไม่นาน คลื่นไส้ต้องนอนพัก หรือเวียนศีรษะจนเดินไม่ถนัด',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Chalfont Seizure Severity Scale'
   },
   4: {
     label: 'รุนแรง',
     color: 'var(--danger)',
-    desc: 'อาการรุนแรง กระทบการใช้ชีวิตมาก ต้องการความช่วยเหลือ เช่น ชักนานกว่า 2-3 นาที สับสนหลังชักนาน หมดสติ ผลข้างเคียงรุนแรง (ผื่นลามทั้งตัว ตาเหลือง) ต้องไปพบแพทย์'
+    desc: 'อาการรุนแรง กระทบการใช้ชีวิตมาก ต้องการความช่วยเหลือ เช่น ชักนานกว่า 2-3 นาที สับสนหลังชักนาน หมดสติ ผลข้างเคียงรุนแรง (ผื่นลามทั้งตัว ตาเหลือง) ต้องไปพบแพทย์',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3; ILAE Definition of Status Epilepticus'
   },
   5: {
     label: 'รุนแรงมาก / ฉุกเฉิน',
     color: 'var(--danger)',
-    desc: 'อาการรุนแรงมาก เป็นอันตรายต่อชีวิต ต้องเรียกรถฉุกเฉินทันที เช่น ชักนานเกิน 5 นาที (Status epilepticus) ชักซ้ำไม่หยุด หยุดหายใจ มีอาการ Stevens-Johnson Syndrome'
+    desc: 'อาการรุนแรงมาก เป็นอันตรายต่อชีวิต ต้องเรียกรถฉุกเฉินทันที เช่น ชักนานเกิน 5 นาที (Status epilepticus) ชักซ้ำไม่หยุด หยุดหายใจ มีอาการ Stevens-Johnson Syndrome',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 4; ILAE Guidelines for Emergency Management'
+  }
+};
+
+// คำอธิบายระดับความรุนแรงสำหรับอาการข้างเคียงยา
+const SIDE_EFFECT_SEVERITY_DESCRIPTIONS = {
+  1: {
+    label: 'เล็กน้อย',
+    color: 'var(--success)',
+    desc: 'อาการข้างเคียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น ง่วงนอนเล็กน้อย เวียนศีรษะชั่วคราว หรือเบื่ออาหารเล็กน้อย สังเกตอาการต่อไป แจ้งแพทย์ในนัดถัดไป',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  2: {
+    label: 'ปานกลาง',
+    color: 'var(--warning)',
+    desc: 'อาการรบกวนการใช้ชีวิต เช่น เวียนศีรษะจนเดินไม่ถนัด คลื่นไส้ต้องนอนพัก หรืออารมณ์แปรปรวนจนกระทบคนรอบข้าง ควรปรึกษาแพทย์เพื่อปรับขนาดยาหรือเปลี่ยนยา',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  3: {
+    label: 'รุนแรงปานกลาง',
+    color: 'var(--warning)',
+    desc: 'อาการรุนแรงปานกลาง กระทบการใช้ชีวิตมาก เช่น ซึมเศร้า อารมณ์แปรปรวนรุนแรง นิ่วในไต หรือโซเดียมในเลือดต่ำ ควรพบแพทย์โดยเร็ว',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  4: {
+    label: 'รุนแรง / ต้องพบแพทย์ทันที',
+    color: 'var(--danger)',
+    desc: 'อาการรุนแรง ต้องพบแพทย์ทันที เช่น ผื่นลามทั้งตัว เม็ดเลือดขาวต่ำ เกล็ดเลือดต่ำ หรือกรดในเลือดสูง ห้ามหยุดยาเองโดยไม่ปรึกษาแพทย์',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3-4; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  5: {
+    label: 'อันตราย / ฉุกเฉิน',
+    color: 'var(--danger)',
+    desc: 'อาการอันตรายถึงชีวิต ต้องเรียกรถฉุกเฉินหรือไปห้องฉุกเฉินทันที เช่น ผื่นรุนแรง Stevens-Johnson Syndrome (SJS) ตัวเหลือง/ตาเหลือง (ตับอักเสบ) หรือตับอ่อนอักเสบ ห้ามหยุดยาเองโดยเด็ดขาด',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 4-5; Perucca P, Gilliam FG. Lancet Neurol. 2012; Epilepsy Foundation Guidelines'
   }
 };
 
@@ -435,9 +612,9 @@ const LEARN_CONTENT = {
     { title:'แนวทางจาก Cochrane Systematic Review', body:'"การให้ยากันชักหลัง traumatic brain injury ช่วยลดการเกิดอาการชักภายใน 7 วันแรกในผู้ที่มีความเสี่ยงสูง แต่ไม่ลดการชักในระยะยาว"\n\nLevetiracetam และ Phenytoin มีประสิทธิภาพเทียบเคียงกันในการป้องกัน early seizures หลัง TBI', ref:'Thompson K, et al. Pharmacological treatments for preventing epilepsy following traumatic head injury. Cochrane Database Syst Rev. 2015.\n\nInaba K, et al. A prospective multicenter comparison of levetiracetam versus phenytoin for early posttraumatic seizure prophylaxis. J Trauma Acute Care Surg. 2013;74(3):766-771.' },
   ]},
   'side-effects': { title:'ผลข้างเคียงยากันชัก', sections:[
-    { title:'ผลข้างเคียงที่พบได้บ่อย', body:'- เวียนศีรษะ / มึนงง\n- ง่วงนอน / อ่อนเพลีย\n- คลื่นไส้ / อาเจียน\n- ผื่นผิวหนัง\n- น้ำหนักเพิ่ม/ลด\n- การมองเห็นเปลี่ยนแปลง (เห็นภาพซ้อน)' },
-    { title:'ผลข้างเคียงเฉพาะยา', body:'Phenytoin (เฟนิโทอิน): เหงือกบวม (gingival hyperplasia), ผมขึ้นมาก, สิว\n\nValproate (วัลโปรเอต): น้ำหนักเพิ่ม, ผมร่วง, ตับอักเสบ (พบน้อย), ตับอ่อนอักเสบ\n\nCarbamazepine (คาร์บามาซีพีน): ผื่นผิวหนัง, เม็ดเลือดขาวต่ำ, ภาวะโซเดียมในเลือดต่ำ\n\nLevetiracetam (ลีเวไทราซีแทม): อารมณ์แปรปรวน, หงุดหงิด, นอนไม่หลับ', ref:'Perucca P, Gilliam FG. Adverse effects of antiepileptic drugs. Lancet Neurol. 2012;11(9):792-802.' },
-    { title:'เมื่อไหร่ควรพบแพทย์ทันที', body:'- ผื่นรุนแรง / Stevens-Johnson Syndrome\n- ปากเจ็บ แผลในปาก ไข้ (อาจเป็นสัญญาณเม็ดเลือดขาวต่ำ)\n- ตาเหลือง ตัวเหลือง (อาจเป็นสัญญาณตับอักเสบ)\n- เลือดออกผิดปกติ\n- อาการชักเพิ่มขึ้นหรือเปลี่ยนแปลง\n- พฤติกรรมหรืออารมณ์เปลี่ยนแปลงมาก' },
+    { title:'ผลข้างเคียงที่พบได้บ่อย (ทุกยา)', body:'ยากันชักทุกตัวอาจทำให้เกิด:\n\n- เวียนศีรษะ / มึนงง\n- ง่วงนอน / อ่อนเพลีย\n- คลื่นไส้ / อาเจียน\n- ปวดศีรษะ\n- ตาพร่า / เห็นภาพซ้อน\n- เดินเซ / ทรงตัวไม่ดี', ref:'Perucca P, Gilliam FG. Adverse effects of antiepileptic drugs. Lancet Neurol. 2012;11(9):792-802.' },
+    { title:'ผลข้างเคียงเฉพาะยาแต่ละตัว', body:'Phenytoin (เฟนิโทอิน):\n• เหงือกบวม (Gingival Hyperplasia) — พบบ่อย\n• ขนดก / ผมขึ้นมาก (Hirsutism) — พบได้\n• เดินเซ / ทรงตัวไม่ดี (Ataxia) — พบบ่อย\n• ตาพร่า / เห็นภาพซ้อน — พบบ่อย\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nCarbamazepine (คาร์บามาซีพีน):\n• โซเดียมในเลือดต่ำ (Hyponatremia) — พบได้\n• เม็ดเลือดขาวต่ำ (Leukopenia) — พบได้\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nValproate (วัลโปรเอต):\n• น้ำหนักเพิ่ม — พบบ่อย\n• ผมร่วง — พบบ่อย\n• มือสั่น (Tremor) — พบบ่อย\n• ตับอักเสบ (Hepatotoxicity) — หายาก แต่อันตราย\n• ตับอ่อนอักเสบ (Pancreatitis) — หายาก แต่อันตราย\n\nLevetiracetam (ลีเวไทราซีแทม):\n• หงุดหงิด / อารมณ์แปรปรวน — พบบ่อย\n• นอนไม่หลับ — พบบ่อย\n• ซึมเศร้า / ก้าวร้าว — พบได้\n\nLamotrigine (ลาโมไทรจีน):\n• ผื่นผิวหนัง (พบบ่อยในเด็ก) — ต้องระวัง\n• ผื่นรุนแรง SJS — หายาก แต่อันตราย\n\nTopiramate (โทพิราเมท):\n• ความจำ / สมาธิลดลง — พบบ่อย\n• นิ่วในไต (Kidney Stones) — พบได้\n• น้ำหนักลด / เบื่ออาหาร — พบบ่อย\n\nOxcarbazepine (ออกซ์คาร์บาซีพีน):\n• โซเดียมในเลือดต่ำ (พบบ่อยกว่า Carbamazepine) — ต้องติดตาม\n• ผื่นผิวหนัง / SJS — หายาก แต่อันตราย\n\nGabapentin (กาบาเพนติน):\n• ง่วงนอน / เดินเซ — พบบ่อย\n• น้ำหนักเพิ่ม — พบบ่อย\n• บวมน้ำ (Peripheral Edema) — พบได้\n\nPhenobarbital (ฟีโนบาร์บิทอล):\n• ง่วงนอนมาก — พบบ่อยมาก\n• ความจำ / สมาธิลดลง — พบบ่อย\n• ซึมเศร้า — พบได้\n• การพึ่งพายา (Dependence) — เมื่อใช้นาน', ref:'Perucca P, Gilliam FG. Adverse effects of antiepileptic drugs. Lancet Neurol. 2012;11(9):792-802.' },
+    { title:'เมื่อไหร่ควรพบแพทย์ทันที (อาการอันตราย)', body:'- ผื่นรุนแรง / Stevens-Johnson Syndrome (SJS) — หยุดยาทันที ไปห้องฉุกเฉิน\n- ตัวเหลือง / ตาเหลือง (อาจเป็นสัญญาณตับอักเสบ) — ไปห้องฉุกเฉิน\n- ปวดท้องรุนแรง / อาเจียนมาก (อาจเป็นสัญญาณตับอ่อนอักเสบ)\n- ปากเจ็บ / แผลในปาก / ไข้ (อาจเป็นสัญญาณเม็ดเลือดขาวต่ำ)\n- เลือดออกผิดปกติ\n- อาการชักเพิ่มขึ้นหรือเปลี่ยนแปลง\n- พฤติกรรมหรืออารมณ์เปลี่ยนแปลงมาก (เช่น คิดทำร้ายตัวเอง)' },
   ]},
   'missed-dose-guide': { title:'ถ้าลืมกินยากันชักควรทำอย่างไร', sections:[
     { title:'ถ้านึกได้ไม่นานหลังเวลาที่ควรกินยา', body:'ให้กินยาทันทีที่นึกได้ ไม่ต้องรอจนถึงมื้อถัดไป' },
@@ -513,11 +690,14 @@ function renderSideEffectLogs() {
     container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>ยังไม่มีบันทึกผลข้างเคียง</p></div>';
     return;
   }
+  const meds = getData('medications');
   container.innerHTML = logs.map(l => {
-    const sev = SEVERITY_DESCRIPTIONS[l.severity];
+    const sev = SIDE_EFFECT_SEVERITY_DESCRIPTIONS[l.severity] || SIDE_EFFECT_SEVERITY_DESCRIPTIONS[1];
+    const med = meds.find(m => m.id === l.medicationId);
+    const medName = med ? med.name : '';
     return `<div class="log-card">
       <div class="log-header">
-        <div class="log-date-row"><i class="fas fa-calendar"></i><span>${l.date}</span></div>
+        <div class="log-date-row"><i class="fas fa-calendar"></i><span>${l.date}</span>${medName ? `<span style="font-size:11px;color:var(--primary);margin-left:6px"><i class="fas fa-pills"></i> ${medName}</span>` : ''}</div>
         <span class="severity-badge" style="background:${sev.color}20;color:${sev.color}">${sev.label}</span>
       </div>
       <div class="tags-row">${l.effects.map(e=>`<span class="tag">${e}</span>`).join('')}</div>
@@ -533,10 +713,66 @@ function initSeizureModal() {
   document.getElementById('seizureTime').textContent = getTimeStr();
   document.getElementById('seizureDuration').value = '';
   document.getElementById('seizureNotes').value = '';
-  selectedSeizureSeverity = 3;
+  selectedSeizureSeverity = 0;
   selectedSeizureSymptoms = [];
-  renderSeizureSeverityPicker();
+  updateSeizureSeverityUI();
   renderSeizureSymptomChips();
+}
+
+function calculateSeizureSeverity() {
+  const duration = document.getElementById('seizureDuration').value;
+  if (!duration) { selectedSeizureSeverity = 0; updateSeizureSeverityUI(); return; }
+
+  let score = 1;
+  // Duration scoring
+  if (duration === '30-60 วินาที') score = 2;
+  else if (duration === '1-2 นาที') score = 3;
+  else if (duration === '2-5 นาที') score = 4;
+  else if (duration === '> 5 นาที') score = 5;
+
+  // Symptom weighting
+  let maxSymptomWeight = 0;
+  selectedSeizureSymptoms.forEach(sName => {
+    const s = SEIZURE_SYMPTOMS.find(item => item.name === sName);
+    if (s && s.weight > maxSymptomWeight) maxSymptomWeight = s.weight;
+  });
+
+  // Final score is the higher of duration or max symptom weight
+  selectedSeizureSeverity = Math.max(score, maxSymptomWeight);
+  updateSeizureSeverityUI();
+}
+
+function updateSeizureSeverityUI() {
+  const badge = document.getElementById('seizureSevBadge');
+  const label = document.getElementById('seizureSevLabel');
+  const desc = document.getElementById('seizureSeverityDesc');
+
+  if (selectedSeizureSeverity === 0) {
+    badge.textContent = '-';
+    badge.style.background = 'var(--text3)';
+    label.textContent = 'กรุณาเลือกระยะเวลาและอาการ';
+    desc.classList.remove('active');
+    return;
+  }
+
+  const sev = SEVERITY_DESCRIPTIONS[selectedSeizureSeverity];
+  badge.textContent = selectedSeizureSeverity;
+  badge.style.background = sev.color;
+  label.textContent = sev.label;
+  label.style.color = sev.color;
+  desc.innerHTML = `<strong>คำแนะนำ:</strong> ${sev.desc}<br><small style="display:block;margin-top:8px;color:var(--text3);font-size:10px;font-style:italic">${sev.ref}</small>`;
+  desc.classList.add('active');
+}
+
+function renderSeizureSymptomChips() {
+  const symptomNames = SEIZURE_SYMPTOMS.map(s => s.name);
+  renderChips('seizureSymptoms', symptomNames, selectedSeizureSymptoms, toggleSeizureSymptom);
+}
+
+function toggleSeizureSymptom(s) {
+  toggleArr(selectedSeizureSymptoms, s);
+  renderSeizureSymptomChips();
+  calculateSeizureSeverity();
 }
 
 function saveSeizureLog() {
@@ -561,20 +797,110 @@ function saveSeizureLog() {
 function initSideEffectModal() {
   document.getElementById('sideEffectDate').textContent = getDateStr(new Date());
   document.getElementById('sideEffectNotes').value = '';
-  selectedSideEffectSeverity = 2;
+  selectedSideEffectSeverity = 0;
   selectedSideEffects = [];
   const meds = getData('medications');
   selectedSideEffectMedId = meds.length > 0 ? meds[0].id : '';
   renderSideEffectMeds();
-  renderSideEffectSeverityPicker();
+  updateSideEffectSeverityUI();
   renderSideEffectSymptomChips();
+}
+
+function calculateSideEffectSeverity() {
+  if (selectedSideEffects.length === 0) {
+    selectedSideEffectSeverity = 0;
+    updateSideEffectSeverityUI();
+    return;
+  }
+
+  // ใช้รายการอาการข้างเคียงของยาที่เลือกอยู่
+  const currentList = getSideEffectListForSelectedMed();
+  let maxWeight = 1;
+  selectedSideEffects.forEach(sName => {
+    const s = currentList.find(item => item.name === sName);
+    if (s && s.weight > maxWeight) maxWeight = s.weight;
+  });
+
+  selectedSideEffectSeverity = maxWeight;
+  updateSideEffectSeverityUI();
+}
+
+function updateSideEffectSeverityUI() {
+  const badge = document.getElementById('sideEffectSevBadge');
+  const label = document.getElementById('sideEffectSevLabel');
+  const desc = document.getElementById('sideEffectSeverityDesc');
+
+  if (selectedSideEffectSeverity === 0) {
+    badge.textContent = '-';
+    badge.style.background = 'var(--text3)';
+    label.textContent = 'กรุณาเลือกอาการข้างเคียง';
+    desc.classList.remove('active');
+    return;
+  }
+
+  const sev = SIDE_EFFECT_SEVERITY_DESCRIPTIONS[selectedSideEffectSeverity];
+  badge.textContent = selectedSideEffectSeverity;
+  badge.style.background = sev.color;
+  label.textContent = sev.label;
+  label.style.color = sev.color;
+  desc.innerHTML = `<strong>คำแนะนำ:</strong> ${sev.desc}<br><small style="display:block;margin-top:8px;color:var(--text3);font-size:10px;font-style:italic">${sev.ref}</small>`;
+  desc.classList.add('active');
+}
+
+function getSideEffectListForSelectedMed() {
+  const meds = getData('medications');
+  const med = meds.find(m => m.id === selectedSideEffectMedId);
+  if (!med) return SIDE_EFFECTS_LIST;
+  // ค้นหาชื่อยาใน AED_SIDE_EFFECTS โดยตรวจสอบว่าชื่อยาใน COMMON_AEDS ตรงกับ key ใน AED_SIDE_EFFECTS
+  const matchedKey = Object.keys(AED_SIDE_EFFECTS).find(key =>
+    med.name.toLowerCase().includes(key.split(' ')[0].toLowerCase()) ||
+    key.toLowerCase().includes(med.name.split(' ')[0].toLowerCase())
+  );
+  if (matchedKey) return AED_SIDE_EFFECTS[matchedKey];
+  return SIDE_EFFECTS_LIST;
+}
+
+function renderSideEffectSymptomChips() {
+  const sideEffectList = getSideEffectListForSelectedMed();
+  const meds = getData('medications');
+  const med = meds.find(m => m.id === selectedSideEffectMedId);
+  const container = document.getElementById('sideEffectSymptoms');
+
+  // แสดงชื่อยาและอ้างอิงเหนือ chip
+  const matchedKey = med ? Object.keys(AED_SIDE_EFFECTS).find(key =>
+    med.name.toLowerCase().includes(key.split(' ')[0].toLowerCase()) ||
+    key.toLowerCase().includes(med.name.split(' ')[0].toLowerCase())
+  ) : null;
+
+  let headerHtml = '';
+  if (matchedKey) {
+    headerHtml = `<div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-style:italic">อาการข้างเคียงเฉพาะของ <strong>${matchedKey}</strong> — อ้างอิง: Perucca P, Gilliam FG. Lancet Neurol. 2012</div>`;
+  } else {
+    headerHtml = `<div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-style:italic">อาการข้างเคียงทั่วไปของยากันชัก</div>`;
+  }
+
+  const chipsHtml = sideEffectList.map(item => {
+    const sel = selectedSideEffects.includes(item.name);
+    const freqBadge = item.freq ? `<span style="font-size:9px;opacity:0.7;display:block;margin-top:1px">${item.freq}</span>` : '';
+    const sevColor = item.weight >= 5 ? 'var(--danger)' : item.weight >= 4 ? 'var(--danger)' : item.weight >= 3 ? 'var(--warning)' : 'var(--text3)';
+    const sevDot = item.weight >= 3 ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${sevColor};margin-right:3px;vertical-align:middle"></span>` : '';
+    return `<button class="chip ${sel?'selected':''}" onclick="toggleSideEffect('${item.name.replace(/'/g, "\\'")}')">${sevDot}${item.name}${freqBadge}</button>`;
+  }).join('');
+
+  container.innerHTML = headerHtml + chipsHtml;
+}
+
+function toggleSideEffect(s) {
+  toggleArr(selectedSideEffects, s);
+  renderSideEffectSymptomChips();
+  calculateSideEffectSeverity();
 }
 
 function renderSideEffectMeds() {
   const meds = getData('medications');
   document.getElementById('sideEffectMeds').innerHTML = meds.map(m => {
     const sel = selectedSideEffectMedId === m.id;
-    return `<button class="chip ${sel?'selected':''}" onclick="selectedSideEffectMedId='${m.id}';renderSideEffectMeds()">${m.name}</button>`;
+    return `<button class="chip ${sel?'selected':''}" onclick="selectedSideEffectMedId='${m.id}';renderSideEffectMeds();renderSideEffectSymptomChips();selectedSideEffects=[];calculateSideEffectSeverity()">${m.name}</button>`;
   }).join('') || '<p style="color:var(--text3);font-size:13px">ยังไม่มีรายการยา</p>';
 }
 
