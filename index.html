@@ -3,115 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SeizGuard - เข้าสู่ระบบ</title>
+    <title>SeizGuard - ชักไม่ซ้ำ</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="logo">
-                <span>Sg</span>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="header-left">
+                <div class="logo-box">Sg</div>
+                <div class="header-text">
+                    <span class="date-text" id="headerDate">Monday, Feb 16</span>
+                    <h1>SeizGuard</h1>
+                    <p>ชักไม่ซ้ำ - Epilepsy management.</p>
+                </div>
             </div>
-            <h1>SeizGuard</h1>
-            <p>ระบบติดตามการใช้ยาประจำวัน</p>
-        </div>
+            <div class="header-right">
+                <i class="fas fa-sun weather-icon"></i>
+            </div>
+        </header>
 
-        <!-- Login/Register Card -->
-        <div class="card">
-            <!-- Login Form -->
-            <div id="loginSection" class="form-section">
-                <h2>เข้าสู่ระบบ</h2>
-                <p>กรุณากรอกชื่อผู้ใช้และรหัสผ่านของคุณ</p>
-
+        <section id="loginSection" class="content-section">
+            <div class="card login-card">
+                <h3>Sign In</h3>
                 <form id="loginForm">
-                    <!-- Error Alert -->
-                    <div id="loginErrorAlert" class="alert error">
-                        <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                        </svg>
-                        <div class="alert-text" id="loginErrorMessage"></div>
-                    </div>
-
-                    <!-- Username Field -->
-                    <div class="form-group">
-                        <label for="loginUsername">ชื่อผู้ใช้</label>
-                        <input type="text" id="loginUsername" name="username" placeholder="กรุณากรอกชื่อผู้ใช้" required>
-                    </div>
-
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <label for="loginPassword">รหัสผ่าน</label>
-                        <input type="password" id="loginPassword" name="password" placeholder="กรุณากรอกรหัสผ่าน" required>
-                    </div>
-
-                    <!-- Login Button -->
-                    <button type="submit" class="submit-btn" id="loginSubmitBtn">
-                        <span id="loginBtnText">เข้าสู่ระบบ</span>
-                    </button>
+                    <input type="text" placeholder="Enter your username" required>
+                    <input type="password" placeholder="Password" required>
+                    <button type="submit" class="btn-primary">Sign In</button>
+                    <a href="#" class="toggle-link">สร้างบัญชีใหม่</a>
                 </form>
+            </div>
+        </section>
 
-                <!-- Register Link -->
-                <div class="toggle-link">
-                    ยังไม่มีบัญชี? <a href="#" id="showRegisterLink">สร้างบัญชีใหม่</a>
+        <section id="dashboardSection" class="content-section" style="display: none;">
+            
+            <div class="grid-layout">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>My Medications</h3>
+                        <button class="btn-small-pink">+ Add Medication</button>
+                    </div>
+                    <div class="med-status">
+                        <i class="fas fa-pills empty-icon"></i>
+                        <p>No medications yet</p>
+                        <button class="btn-pink-outline">+ Add Medication</button>
+                    </div>
+                </div>
+
+                <div class="card help-card">
+                    <div class="card-icon-round">?</div>
+                    <h3>ลืมกินยา?</h3>
+                    <p>ระบบช่วยตัดสินใจตามหลักการแพทย์</p>
+                    <div class="btn-group">
+                        <button onclick="checkMissedDose('now')" class="btn-action pink">กินทันที!</button>
+                        <button onclick="checkMissedDose('wait')" class="btn-action dark-pink">รอดูรอบหน้า</button>
+                    </div>
+                    <a href="#" class="read-article" onclick="switchTab('learn')">Read Article →</a>
+                </div>
+
+                <div class="card">
+                    <div class="card-header-icon">
+                        <i class="far fa-calendar-alt"></i>
+                        <h3>Today's Schedule</h3>
+                    </div>
+                    <p class="empty-text">No medications scheduled for today.</p>
+                </div>
+
+                <div class="card stat-card pink-bg">
+                    <div class="stat-header">
+                        <i class="fas fa-chart-line"></i> ADHERENCE RATE
+                    </div>
+                    <div class="stat-value">0%</div>
+                    <div class="stat-details">
+                        <span><i class="check-icon"></i> 0 Taken</span>
+                        <span><i class="miss-icon"></i> 0 Missed</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Weekly Adherence</h3>
+                    <div class="stat-value-large">0%</div>
+                    <div class="chart-container">
+                        <div class="bar" style="height: 40%;"></div>
+                        <div class="bar highlight" style="height: 70%;"></div>
+                        <div class="bar" style="height: 50%;"></div>
+                        <div class="bar yellow" style="height: 80%;"></div>
+                        <div class="bar" style="height: 60%;"></div>
+                        <div class="bar" style="height: 90%;"></div>
+                        <div class="bar" style="height: 40%;"></div>
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Register Form -->
-            <div id="registerSection" class="form-section" style="display: none;">
-                <h2>สร้างบัญชีใหม่</h2>
-                <p>กรุณากรอกข้อมูลเพื่อสร้างบัญชี</p>
-
-                <form id="registerForm">
-                    <!-- Success Alert -->
-                    <div id="registerSuccessAlert" class="alert success">
-                        <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                        <div class="alert-text">ลงทะเบียนสำเร็จ! กำลังนำไปยังหน้าเข้าสู่ระบบ...</div>
-                    </div>
-
-                    <!-- Error Alert -->
-                    <div id="registerErrorAlert" class="alert error">
-                        <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                        </svg>
-                        <div class="alert-text" id="registerErrorMessage"></div>
-                    </div>
-
-                    <!-- Username Field -->
-                    <div class="form-group">
-                        <label for="registerUsername">ชื่อผู้ใช้</label>
-                        <input type="text" id="registerUsername" name="username" placeholder="กรุณากรอกชื่อผู้ใช้" required>
-                    </div>
-
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <label for="registerPassword">รหัสผ่าน</label>
-                        <input type="password" id="registerPassword" name="password" placeholder="กรุณากรอกรหัสผ่าน" required>
-                    </div>
-
-                    <!-- Confirm Password Field -->
-                    <div class="form-group">
-                        <label for="registerConfirmPassword">ยืนยันรหัสผ่าน</label>
-                        <input type="password" id="registerConfirmPassword" name="confirmPassword" placeholder="กรุณายืนยันรหัสผ่าน" required>
-                    </div>
-
-                    <!-- Register Button -->
-                    <button type="submit" class="submit-btn" id="registerSubmitBtn">
-                        <span id="registerBtnText">สร้างบัญชี</span>
-                    </button>
-                </form>
-
-                <!-- Login Link -->
-                <div class="toggle-link">
-                    มีบัญชีอยู่แล้ว? <a href="#" id="showLoginLink">เข้าสู่ระบบ</a>
+        <section id="learnSection" class="content-section" style="display: none;">
+            <div class="card">
+                <h2>📚 สุขศึกษา & งานวิจัย</h2>
+                <div class="edu-item">
+                    <h4>ทำไมต้องกินยากันชักหลัง Head Injury?</h4>
+                    <p>เพื่อป้องกัน Early Post-traumatic Seizure (ภายใน 7 วันแรก) ซึ่งมีหลักฐานเชิงประจักษ์ว่าช่วยลดอัตราการชักเฉียบพลันได้</p>
+                </div>
+                <hr>
+                <div class="edu-item">
+                    <h4>ถ้าลืมกินยากันชักควรทำอย่างไร?</h4>
+                    <ul>
+                        <li>นึกได้ไม่นาน -> กินทันที</li>
+                        <li>ใกล้เวลามื้อถัดไป -> ข้ามมื้อที่ลืม</li>
+                        <li>ห้ามกินเป็น 2 เท่า</li>
+                    </ul>
                 </div>
             </div>
+        </section>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('today')">
+                <i class="fas fa-home"></i>
+                <span>Today</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('meds')">
+                <i class="fas fa-capsules"></i>
+                <span>Meds</span>
+            </div>
+            <div class="nav-item main-btn" onclick="openLogEvent()">
+                <div class="fab">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <span class="fab-label">Log Event</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('history')">
+                <i class="fas fa-wave-square"></i>
+                <span>History</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('learn')">
+                <i class="fas fa-book-open"></i>
+                <span>Learn</span>
+            </div>
+        </nav>
+    </div>
+
+    <div id="logModal" class="modal">
+        <div class="modal-content">
+            <h3>บันทึกอาการชัก / ผลข้างเคียง</h3>
+            <select id="symptom">
+                <option value="none">ไม่มีอาการปกติ</option>
+                <option value="seizure">มีอาการชัก</option>
+                <option value="side-effect">ผลข้างเคียงยา (ง่วง/เซ/ผื่น)</option>
+            </select>
+            <button onclick="closeLogEvent()" class="btn-primary">บันทึกข้อมูล</button>
         </div>
-
-        <!-- Footer -->
-        <p class="footer">© 2026 SeizGuard. สงวนลิขสิทธิ์ทั้งหมด</p>
     </div>
 
     <script src="script.js"></script>
