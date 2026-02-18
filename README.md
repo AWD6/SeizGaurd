@@ -1,1 +1,1 @@
-# SeizGaurd
+# SeizGuard
