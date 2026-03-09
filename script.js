@@ -1,4 +1,3 @@
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
 /* ===== SeizGuard - ชักไม่ซ้ำ ===== */
 
 const COMMON_AEDS = [
@@ -275,29 +274,11 @@ function handleLogin() {
   const hn = document.getElementById('loginHN').value.trim();
   if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  
-  if (users[u] && users[u].hn === hn) {
-    currentUser = u;
-    localStorage.setItem('seizguard_currentUser', u);
-    enterApp();
-    return;
-  }
-  
-  showToast('กำลังตรวจสอบข้อมูล...');
-  fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(hn)}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.exists) {
-        users[u] = { hn: hn };
-        localStorage.setItem('seizguard_users', JSON.stringify(users));
-        currentUser = u;
-        localStorage.setItem('seizguard_currentUser', u);
-        enterApp();
-      } else {
-        showToast('ไม่พบผู้ใช้นี้ หรือข้อมูลไม่ถูกต้อง');
-      }
-    })
-    .catch(() => showToast('ไม่พบผู้ใช้นี้ กรุณาลงทะเบียนก่อน'));
+  if (!users[u]) { showToast('ไม่พบผู้ใช้นี้ กรุณาลงทะเบียนก่อน'); return; }
+  if (users[u].hn !== hn) { showToast('เลขที่โรงพยาบาลไม่ถูกต้อง'); return; }
+  currentUser = u;
+  localStorage.setItem('seizguard_currentUser', u);
+  enterApp();
 }
 
 function handleRegister() {
@@ -308,16 +289,8 @@ function handleRegister() {
   if (hn.length < 1) { showToast('กรุณากรอกเลขที่โรงพยาบาล'); return; }
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
   if (users[u]) { showToast('ชื่อผู้ใช้นี้ถูกใช้แล้ว'); return; }
-  
   users[u] = { hn: hn };
   localStorage.setItem('seizguard_users', JSON.stringify(users));
-  
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({ action: 'registerUser', username: u, hn: hn, timestamp: new Date().toISOString() })
-  });
-
   currentUser = u;
   localStorage.setItem('seizguard_currentUser', u);
   showToast('ลงทะเบียนสำเร็จ!');
@@ -411,9 +384,6 @@ function generateDailyLogs() {
     });
   });
   setData('medLogs', logs);
-    const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    const profile = getObj('profile') || {};
-    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logMedication', username: currentUser, hn: profile.hn || '', medName: med ? med.name : 'Unknown', date: logs[idx].date, scheduledTime: logs[idx].scheduledTime, takenTime: logs[idx].takenTime, timestamp: new Date().toISOString() }) });
 }
 
 function renderAdherence() {
@@ -426,7 +396,7 @@ function renderAdherence() {
   const pct = total>0 ? Math.round(taken/total*100) : 0;
 
   document.getElementById('adherenceCard').innerHTML = `
-    <div class="adherence-header"><i class="fas fa-chart-bar"></i><span>Adherence 7 วัน</span><button class="delete-btn" onclick="deleteSeizureLog('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;float:right;"><i class="fas fa-times"></i></button></div>
+    <div class="adherence-header"><i class="fas fa-chart-bar"></i><span>Adherence 7 วัน</span></div>
     <div class="adherence-bar"><div class="adherence-fill" style="width:${pct}%"></div></div>
     <div class="adherence-text">${taken}/${total} (${pct}%)</div>`;
 }
@@ -499,9 +469,6 @@ function takePill(logId) {
     logs[idx].status = 'taken';
     logs[idx].takenTime = getTimeStr();
     setData('medLogs', logs);
-    const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    const profile = getObj('profile') || {};
-    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logMedication', username: currentUser, hn: profile.hn || '', medName: med ? med.name : 'Unknown', date: logs[idx].date, scheduledTime: logs[idx].scheduledTime, takenTime: logs[idx].takenTime, timestamp: new Date().toISOString() }) });
     renderHome();
     showToast('บันทึกการกินยาแล้ว');
   }
@@ -718,7 +685,7 @@ function renderSeizureLogs() {
     const sev = SEVERITY_DESCRIPTIONS[l.severity];
     return `<div class="log-card">
       <div class="log-header">
-        <div class="log-date-row"><i class="fas fa-calendar"></i><span>${l.date}</span><span style="color:var(--text2)">${l.time}</span><button class="delete-btn" onclick="deleteSeizureLog('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;float:right;"><i class="fas fa-times"></i></button></div>
+        <div class="log-date-row"><i class="fas fa-calendar"></i><span>${l.date}</span><span style="color:var(--text2)">${l.time}</span></div>
         <span class="severity-badge" style="background:${sev.color}20;color:${sev.color}">${sev.label}</span>
       </div>
       ${l.duration ? `<div class="log-detail">ระยะเวลา: ${l.duration}</div>` : ''}
@@ -833,8 +800,6 @@ function saveSeizureLog() {
   const logs = getData('seizureLogs');
   logs.push(log);
   setData('seizureLogs', logs);
-  const profile = getObj('profile') || {};
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logSeizure', username: currentUser, hn: profile.hn || '', date: log.date, time: log.time, duration: log.duration, severity: log.severity, symptoms: log.symptoms.join(', '), notes: log.notes, timestamp: new Date().toISOString() }) });
   closeModal('seizureModal');
   renderAssess();
   showToast('บันทึกอาการชักแล้ว');
@@ -964,9 +929,6 @@ function saveSideEffectLog() {
   const logs = getData('sideEffectLogs');
   logs.push(log);
   setData('sideEffectLogs', logs);
-  const profile = getObj('profile') || {};
-  const med = getData('medications').find(m => m.id === log.medicationId);
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logSideEffect', username: currentUser, hn: profile.hn || '', medName: med ? med.name : 'Unknown', date: log.date, effects: log.effects.join(', '), severity: log.severity, notes: log.notes, timestamp: new Date().toISOString() }) });
   closeModal('sideEffectModal');
   renderAssess();
   showToast('บันทึกผลข้างเคียงแล้ว');
@@ -1003,14 +965,6 @@ function toggleArr(arr, item) {
 }
 
 /* ===== PROFILE ===== */
-function deleteSeizureLog(id) { if (confirm('ต้องการลบบันทึกอาการชักนี้หรือไม่?')) { let logs = getData('seizureLogs'); logs = logs.filter(l => l.id !== id); setData('seizureLogs', logs);
-  const profile = getObj('profile') || {};
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logSeizure', username: currentUser, hn: profile.hn || '', date: log.date, time: log.time, duration: log.duration, severity: log.severity, symptoms: log.symptoms.join(', '), notes: log.notes, timestamp: new Date().toISOString() }) }); renderAssess(); showToast('ลบบันทึกแล้ว'); } }
-function deleteSideEffectLog(id) { if (confirm('ต้องการลบบันทึกผลข้างเคียงนี้หรือไม่?')) { let logs = getData('sideEffectLogs'); logs = logs.filter(l => l.id !== id); setData('sideEffectLogs', logs);
-  const profile = getObj('profile') || {};
-  const med = getData('medications').find(m => m.id === log.medicationId);
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'logSideEffect', username: currentUser, hn: profile.hn || '', medName: med ? med.name : 'Unknown', date: log.date, effects: log.effects.join(', '), severity: log.severity, notes: log.notes, timestamp: new Date().toISOString() }) }); renderAssess(); showToast('ลบบันทึกแล้ว'); } }
-
 function renderProfile() {
   const profile = getObj('profile') || { name:'', hn:'', age:'', diagnosis:'', emergencyContact:'', emergencyPhone:'', doctorName:'', doctorPhone:'', nextAppointment:'' };
   const phone = profile.emergencyPhone || '1669';
@@ -1040,7 +994,7 @@ function renderProfile() {
 
   document.getElementById('profileContent').innerHTML = fields.map(section =>
     `<div class="profile-section">
-      <div class="profile-section-header"><i class="fas ${section.icon}" style="color:${section.color}"></i><span>${section.section}</span><button class="delete-btn" onclick="deleteSeizureLog('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;float:right;"><i class="fas fa-times"></i></button></div>
+      <div class="profile-section-header"><i class="fas ${section.icon}" style="color:${section.color}"></i><span>${section.section}</span></div>
       <div class="profile-card">
         ${section.rows.map(r => `<div class="profile-row">
           <span class="profile-label">${r.label}</span>
@@ -1098,7 +1052,7 @@ function renderMissedDoseContent() {
 
   container.innerHTML = `
     <div class="advisor-card">
-      <div class="advisor-header"><i class="fas fa-lightbulb"></i><span>ระบบช่วยแนะนำ</span><button class="delete-btn" onclick="deleteSeizureLog('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;float:right;"><i class="fas fa-times"></i></button></div>
+      <div class="advisor-header"><i class="fas fa-lightbulb"></i><span>ระบบช่วยแนะนำ</span></div>
       ${advisorHtml}
     </div>
     <h3 style="font-size:17px;font-weight:600;margin-bottom:14px">หลักปฏิบัติเมื่อลืมกินยากันชัก</h3>
@@ -1270,3 +1224,202 @@ function addGoogleSheetButton() {
 window.addEventListener('load', () => {
   setTimeout(addGoogleSheetButton, 500);
 });
+
+/* ==========================================================================
+   EXTENSION CODE (ต่อท้ายไฟล์ script.js เดิม เพื่อรักษา UI เดิม 100%)
+   ========================================================================== */
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
+
+// ฟังก์ชันส่งข้อมูลไป Google Sheets
+async function sendToSheet(action, data) {
+  const profile = JSON.parse(localStorage.getItem('seizguard_profile') || '{}');
+  const payload = {
+    action: action,
+    username: currentUser,
+    hn: profile.hn || '',
+    timestamp: new Date().toISOString(),
+    ...data
+  };
+  
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Sheet Error:', e);
+  }
+}
+
+// ฟังก์ชันลบข้อมูล (กากบาท) - เพิ่มปุ่มกากบาทใน UI เดิมผ่าน JavaScript (ไม่แก้ HTML เดิม)
+function addDeleteButtons() {
+  const seizureItems = document.querySelectorAll('#seizureHistory .log-item');
+  seizureItems.forEach((item, index) => {
+    if (!item.querySelector('.delete-btn')) {
+      const btn = document.createElement('button');
+      btn.innerHTML = '<i class="fas fa-times"></i>';
+      btn.className = 'delete-btn';
+      btn.style = 'float:right; background:none; border:none; color:var(--text3); cursor:pointer; padding:5px;';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('ต้องการลบบันทึกอาการชักนี้หรือไม่?')) {
+          let logs = JSON.parse(localStorage.getItem('seizguard_seizureLogs') || '[]');
+          logs.splice(index, 1);
+          localStorage.setItem('seizguard_seizureLogs', JSON.stringify(logs));
+          renderAssess();
+          showToast('ลบบันทึกแล้ว');
+        }
+      };
+      item.prepend(btn);
+    }
+  });
+
+  const sideEffectItems = document.querySelectorAll('#sideEffectHistory .log-item');
+  sideEffectItems.forEach((item, index) => {
+    if (!item.querySelector('.delete-btn')) {
+      const btn = document.createElement('button');
+      btn.innerHTML = '<i class="fas fa-times"></i>';
+      btn.className = 'delete-btn';
+      btn.style = 'float:right; background:none; border:none; color:var(--text3); cursor:pointer; padding:5px;';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('ต้องการลบบันทึกผลข้างเคียงนี้หรือไม่?')) {
+          let logs = JSON.parse(localStorage.getItem('seizguard_sideEffectLogs') || '[]');
+          logs.splice(index, 1);
+          localStorage.setItem('seizguard_sideEffectLogs', JSON.stringify(logs));
+          renderAssess();
+          showToast('ลบบันทึกแล้ว');
+        }
+      };
+      item.prepend(btn);
+    }
+  });
+}
+
+// ดักจับการทำงานเดิมเพื่อส่งข้อมูล (Monkey Patching)
+// 1. ดักจับการกินยา (takePill)
+const originalTakePill = window.takePill;
+window.takePill = function(logId) {
+  if (typeof originalTakePill === 'function') {
+    originalTakePill(logId);
+    // ส่งข้อมูลไป Sheet หลังทำงานเสร็จ
+    const logs = JSON.parse(localStorage.getItem('seizguard_medLogs') || '[]');
+    const log = logs.find(l => l.id === logId);
+    const meds = JSON.parse(localStorage.getItem('seizguard_medications') || '[]');
+    const med = meds.find(m => m.id === log.medicationId);
+    if (log && log.status === 'taken') {
+      sendToSheet('logMedication', {
+        medName: med ? med.name : 'Unknown',
+        date: log.date,
+        scheduledTime: log.scheduledTime,
+        takenTime: log.takenTime
+      });
+    }
+  }
+};
+
+// 2. ดักจับการบันทึกอาการชัก (saveSeizureLog)
+const originalSaveSeizure = window.saveSeizureLog;
+window.saveSeizureLog = function() {
+  if (typeof originalSaveSeizure === 'function') {
+    originalSaveSeizure();
+    const logs = JSON.parse(localStorage.getItem('seizguard_seizureLogs') || '[]');
+    const lastLog = logs[logs.length - 1];
+    if (lastLog) {
+      sendToSheet('logSeizure', {
+        date: lastLog.date,
+        time: lastLog.time,
+        duration: lastLog.duration,
+        severity: lastLog.severity,
+        symptoms: lastLog.symptoms.join(', '),
+        notes: lastLog.notes
+      });
+    }
+  }
+};
+
+// 3. ดักจับการบันทึกผลข้างเคียง (saveSideEffectLog)
+const originalSaveSideEffect = window.saveSideEffectLog;
+window.saveSideEffectLog = function() {
+  if (typeof originalSaveSideEffect === 'function') {
+    originalSaveSideEffect();
+    const logs = JSON.parse(localStorage.getItem('seizguard_sideEffectLogs') || '[]');
+    const lastLog = logs[logs.length - 1];
+    const meds = JSON.parse(localStorage.getItem('seizguard_medications') || '[]');
+    const med = meds.find(m => m.id === lastLog.medicationId);
+    if (lastLog) {
+      sendToSheet('logSideEffect', {
+        medName: med ? med.name : 'Unknown',
+        date: lastLog.date,
+        effects: lastLog.effects.join(', '),
+        severity: lastLog.severity,
+        notes: lastLog.notes
+      });
+    }
+  }
+};
+
+// 4. แก้ไข Login ให้เช็คข้ามเครื่อง (แทนที่ handleLogin เดิม)
+window.handleLogin = async function() {
+  const u = document.getElementById('loginUsername').value.trim();
+  const hn = document.getElementById('loginHN').value.trim();
+  if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
+  
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  if (users[u] && users[u].hn === hn) {
+    currentUser = u;
+    localStorage.setItem('seizguard_currentUser', u);
+    enterApp();
+    return;
+  }
+
+  showToast('กำลังตรวจสอบข้อมูลข้ามเครื่อง...');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(hn)}`);
+    const data = await res.json();
+    if (data.exists) {
+      users[u] = { hn: hn };
+      localStorage.setItem('seizguard_users', JSON.stringify(users));
+      currentUser = u;
+      localStorage.setItem('seizguard_currentUser', u);
+      enterApp();
+    } else {
+      showToast('ไม่พบผู้ใช้นี้ หรือข้อมูลไม่ถูกต้อง');
+    }
+  } catch (e) {
+    showToast('ไม่พบผู้ใช้นี้ กรุณาลงทะเบียนก่อน');
+  }
+};
+
+// 5. แก้ไข Register ให้บันทึกลง Sheet (แทนที่ handleRegister เดิม)
+window.handleRegister = function() {
+  const u = document.getElementById('loginUsername').value.trim();
+  const hn = document.getElementById('loginHN').value.trim();
+  if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
+  if (u.length < 3) { showToast('ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร'); return; }
+  
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  if (users[u]) { showToast('ชื่อผู้ใช้นี้ถูกใช้แล้ว'); return; }
+  
+  users[u] = { hn: hn };
+  localStorage.setItem('seizguard_users', JSON.stringify(users));
+  
+  sendToSheet('registerUser', { username: u, hn: hn });
+
+  currentUser = u;
+  localStorage.setItem('seizguard_currentUser', u);
+  showToast('ลงทะเบียนสำเร็จ!');
+  enterApp();
+};
+
+// เพิ่มปุ่มลบทุกครั้งที่มีการ Render หน้า Assess
+const originalRenderAssess = window.renderAssess;
+window.renderAssess = function() {
+  if (typeof originalRenderAssess === 'function') {
+    originalRenderAssess();
+    setTimeout(addDeleteButtons, 100);
+  }
+};
+
