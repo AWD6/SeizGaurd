@@ -1,6 +1,6 @@
-/* ===== SeizGuard - ชักไม่ซ้ำ (Complete Original Version + Google Sheets Integration) ===== */
+/* ===== SeizGuard - ชักไม่ซ้ำ ===== */
 
-// 1. Google Apps Script Web App URL (อัปเดตใหม่)
+// --- GOOGLE APPS SCRIPT CONFIGURATION ---
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
 
 const COMMON_AEDS = [
@@ -38,6 +38,7 @@ const SEIZURE_SYMPTOMS = [
   { name: 'หยุดหายใจ/หน้าเขียว', weight: 5 }
 ];
 
+// อาการข้างเคียงทั่วไปของยากันชัก (ใช้เมื่อยังไม่ได้เลือกยา)
 const SIDE_EFFECTS_LIST = [
   { name: 'เวียนศีรษะ', weight: 1 },
   { name: 'มึนงง', weight: 1 },
@@ -59,6 +60,7 @@ const SIDE_EFFECTS_LIST = [
   { name: 'ความจำ/สมาธิลดลง', weight: 2 }
 ];
 
+// อาการข้างเคียงเฉพาะของยาแต่ละตัว
 const AED_SIDE_EFFECTS = {
   'Phenytoin': [
     { name: 'เวียนศีรษะ', weight: 1, freq: 'บ่อย' },
@@ -169,409 +171,308 @@ const AED_SIDE_EFFECTS = {
 };
 
 const SEVERITY_DESCRIPTIONS = {
-  1: { label: 'เล็กน้อยมาก', color: 'var(--success)', desc: 'อาการเพียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น รู้สึกชาเล็กน้อยชั่วคราว เหม่อนิ่งไม่กี่วินาที หรือผลข้างเคียงยาที่แทบไม่รู้สึก', ref: 'อ้างอิง: CTCAE v5.0 Grade 1; ILAE Seizure Severity Scale' },
-  2: { label: 'เล็กน้อย', color: 'var(--success)', desc: 'อาการเล็กน้อย รบกวนเล็กน้อยแต่ยังทำกิจกรรมได้ตามปกติ เช่น กระตุกเฉพาะที่สั้นๆ มึนงงเล็กน้อย หรือรู้สึกง่วงเป็นบางเวลา', ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Liverpool Seizure Severity Scale' },
-  3: { label: 'ปานกลาง', color: 'var(--warning)', desc: 'อาการปานกลาง กระทบการใช้ชีวิตบ้าง ต้องหยุดพักกิจกรรม เช่น อาการชักที่มีเกร็ง/กระตุกชัดเจนแต่ไม่นาน คลื่นไส้ต้องนอนพัก หรือเวียนศีรษะจนเดินไม่ถนัด', ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Chalfont Seizure Severity Scale' },
-  4: { label: 'รุนแรง', color: 'var(--danger)', desc: 'อาการรุนแรง กระทบการใช้ชีวิตมาก ต้องการความช่วยเหลือ เช่น ชักนานกว่า 2-3 นาที สับสนหลังชักนาน หมดสติ ผลข้างเคียงรุนแรง (ผื่นลามทั้งตัว ตาเหลือง) ต้องไปพบแพทย์', ref: 'อ้างอิง: CTCAE v5.0 Grade 3; ILAE Definition of Status Epilepticus' },
-  5: { label: 'รุนแรงมาก / ฉุกเฉิน', color: 'var(--danger)', desc: 'อาการรุนแรงมาก เป็นอันตรายต่อชีวิต ต้องเรียกรถฉุกเฉินทันที เช่น ชักนานเกิน 5 นาที (Status epilepticus) ชักซ้ำไม่หยุด หยุดหายใจ มีอาการ Stevens-Johnson Syndrome', ref: 'อ้างอิง: CTCAE v5.0 Grade 4; ILAE Guidelines for Emergency Management' }
+  1: {
+    label: 'เล็กน้อยมาก',
+    color: 'var(--success)',
+    desc: 'อาการเพียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น รู้สึกชาเล็กน้อยชั่วคราว เหม่อนิ่งไม่กี่วินาที หรือผลข้างเคียงยาที่แทบไม่รู้สึก',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; ILAE Seizure Severity Scale'
+  },
+  2: {
+    label: 'เล็กน้อย',
+    color: 'var(--success)',
+    desc: 'อาการเล็กน้อย รบกวนเล็กน้อยแต่ยังทำกิจกรรมได้ตามปกติ เช่น กระตุกเฉพาะที่สั้นๆ มึนงงเล็กน้อย หรือรู้สึกง่วงเป็นบางเวลา',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Liverpool Seizure Severity Scale'
+  },
+  3: {
+    label: 'ปานกลาง',
+    color: 'var(--warning)',
+    desc: 'อาการปานกลาง กระทบการใช้ชีวิตบ้าง ต้องหยุดพักกิจกรรม เช่น อาการชักที่มีเกร็ง/กระตุกชัดเจนแต่ไม่นาน คลื่นไส้ต้องนอนพัก หรือเวียนศีรษะจนเดินไม่ถนัด',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Chalfont Seizure Severity Scale'
+  },
+  4: {
+    label: 'รุนแรง',
+    color: 'var(--danger)',
+    desc: 'อาการรุนแรง กระทบการใช้ชีวิตมาก ต้องการความช่วยเหลือ เช่น ชักนานกว่า 2-3 นาที สับสนหลังชักนาน หมดสติ ผลข้างเคียงรุนแรง (ผื่นลามทั้งตัว ตาเหลือง) ต้องไปพบแพทย์',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3; ILAE Definition of Status Epilepticus'
+  },
+  5: {
+    label: 'รุนแรงมาก / ฉุกเฉิน',
+    color: 'var(--danger)',
+    desc: 'อาการรุนแรงมาก เป็นอันตรายต่อชีวิต ต้องเรียกรถฉุกเฉินทันที เช่น ชักนานเกิน 5 นาที (Status epilepticus) ชักซ้ำไม่หยุด หยุดหายใจ มีอาการ Stevens-Johnson Syndrome',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 4; ILAE Guidelines for Emergency Management'
+  }
 };
 
 const SIDE_EFFECT_SEVERITY_DESCRIPTIONS = {
-  1: { label: 'เล็กน้อย', color: 'var(--success)', desc: 'อาการข้างเคียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น ง่วงนอนเล็กน้อย เวียนศีรษะชั่วคราว หรือเบื่ออาหารเล็กน้อย สังเกตอาการต่อไป แจ้งแพทย์ในนัดถัดไป', ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Perucca P, Gilliam FG. Lancet Neurol. 2012' },
-  2: { label: 'ปานกลาง', color: 'var(--warning)', desc: 'อาการรบกวนการใช้ชีวิต เช่น เวียนศีรษะจนเดินไม่ถนัด คลื่นไส้ต้องนอนพัก หรืออารมณ์แปรปรวนจนกระทบคนรอบข้าง ควรปรึกษาแพทย์เพื่อปรับขนาดยาหรือเปลี่ยนยา', ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Perucca P, Gilliam FG. Lancet Neurol. 2012' },
-  3: { label: 'รุนแรงปานกลาง', color: 'var(--warning)', desc: 'อาการรุนแรงปานกลาง กระทบการใช้ชีวิตมาก เช่น ซึมเศร้า อารมณ์แปรปรวนรุนแรง นิ่วในไต หรือโซเดียมในเลือดต่ำ ควรพบแพทย์โดยเร็ว', ref: 'อ้างอิง: CTCAE v5.0 Grade 3; Perucca P, Gilliam FG. Lancet Neurol. 2012' },
-  4: { label: 'รุนแรง / ต้องพบแพทย์ทันที', color: 'var(--danger)', desc: 'อาการรุนแรง ต้องพบแพทย์ทันที เช่น ผื่นลามทั้งตัว เม็ดเลือดขาวต่ำ เกล็ดเลือดต่ำ หรือกรดในเลือดสูง ห้ามหยุดยาเองโดยไม่ปรึกษาแพทย์', ref: 'อ้างอิง: CTCAE v5.0 Grade 3-4; Perucca P, Gilliam FG. Lancet Neurol. 2012' }
+  1: {
+    label: 'เล็กน้อย',
+    color: 'var(--success)',
+    desc: 'อาการข้างเคียงเล็กน้อย ไม่กระทบกิจวัตรประจำวัน เช่น ง่วงนอนเล็กน้อย เวียนศีรษะชั่วคราว หรือเบื่ออาหารเล็กน้อย สังเกตอาการต่อไป แจ้งแพทย์ในนัดถัดไป',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 1; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  2: {
+    label: 'ปานกลาง',
+    color: 'var(--warning)',
+    desc: 'อาการรบกวนการใช้ชีวิต เช่น เวียนศีรษะจนเดินไม่ถนัด คลื่นไส้ต้องนอนพัก หรืออารมณ์แปรปรวนจนกระทบคนรอบข้าง ควรปรึกษาแพทย์เพื่อปรับขนาดยาหรือเปลี่ยนยา',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 2; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  3: {
+    label: 'รุนแรงปานกลาง',
+    color: 'var(--warning)',
+    desc: 'อาการรุนแรงปานกลาง กระทบการใช้ชีวิตมาก เช่น ซึมเศร้า อารมณ์แปรปรวนรุนแรง นิ่วในไต หรือโซเดียมในเลือดต่ำ ควรพบแพทย์โดยเร็ว',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  4: {
+    label: 'รุนแรง / ต้องพบแพทย์ทันที',
+    color: 'var(--danger)',
+    desc: 'อาการรุนแรง ต้องพบแพทย์ทันที เช่น ผื่นลามทั้งตัว เม็ดเลือดขาวต่ำ เกล็ดเลือดต่ำ หรือกรดในเลือดสูง ห้ามหยุดยาเองโดยไม่ปรึกษาแพทย์',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 3; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  },
+  5: {
+    label: 'อันตรายถึงชีวิต / ฉุกเฉิน',
+    color: 'var(--danger)',
+    desc: 'อาการรุนแรงมาก เป็นอันตรายต่อชีวิต เช่น Stevens-Johnson Syndrome (ผื่นพอง ปากเปื่อย), ตับอักเสบรุนแรง (ตัวเหลืองมาก), หรือคิดสั้น/พยายามฆ่าตัวตาย ต้องไปห้องฉุกเฉินทันที',
+    ref: 'อ้างอิง: CTCAE v5.0 Grade 4; Perucca P, Gilliam FG. Lancet Neurol. 2012'
+  }
 };
 
-const MONTH_NAMES_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-const DAY_NAMES_TH = ['อา','จ','อ','พ','พฤ','ศ','ส'];
-
+/* ===== STATE ===== */
 let currentUser = null;
-let selectedDate = new Date();
 let selectedTimes = [];
-let seizureSymptoms = [];
-let sideEffectSymptoms = [];
-let sideEffectMeds = [];
 let editingProfile = false;
+let missedDoseFreq = 1;
 let missedDoseStep = 'frequency';
-let missedDoseFreq = 0;
 
-// 2. Google Sheets Integration Functions
-async function syncDataToSheet(action, data) {
-  if (!SCRIPT_URL) return;
-  const username = localStorage.getItem('seizguard_currentUser');
-  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  const hn = users[username]?.hn || '';
-  
-  try {
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: action, 
-        data: { ...data, username: username, hn: hn } 
-      })
-    });
-    return response;
-  } catch (error) {
-    console.error('Error syncing to Google Sheets:', error);
-  }
-}
-
-// Helper Functions
-function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
-function getDateStr(date) { return date.toISOString().split('T')[0]; }
-function getTimeStr() { const now = new Date(); return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'); }
-function userKey(key) { return `seizguard_${currentUser}_${key}`; }
-function getData(key) { try { return JSON.parse(localStorage.getItem(userKey(key))) || []; } catch(e) { return []; } }
-function setData(key, val) { localStorage.setItem(userKey(key), JSON.stringify(val)); }
-function getObj(key) { try { return JSON.parse(localStorage.getItem(userKey(key))); } catch(e) { return null; } }
-function setObj(key, val) { localStorage.setItem(userKey(key), JSON.stringify(val)); }
+/* ===== CORE FUNCTIONS ===== */
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function getData(key) { return JSON.parse(localStorage.getItem(`seizguard_${currentUser}_${key}`) || '[]'); }
+function setData(key, val) { localStorage.setItem(`seizguard_${currentUser}_${key}`, JSON.stringify(val)); }
+function getObj(key) { return JSON.parse(localStorage.getItem(`seizguard_${currentUser}_${key}`) || '{}'); }
+function setObj(key, val) { localStorage.setItem(`seizguard_${currentUser}_${key}`, JSON.stringify(val)); }
 
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('active');
+  setTimeout(() => t.classList.remove('active'), 3000);
 }
 
-function getThaiName(engName) {
-  const med = COMMON_AEDS.find(a => a.name === engName);
-  return med ? med.thai : '';
+// --- SYNC TO GOOGLE APPS SCRIPT ---
+async function syncToSheet(action, data) {
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  const hn = users[currentUser]?.hn || '';
+  const payload = {
+    action: action,
+    username: currentUser,
+    hn: hn,
+    timestamp: new Date().toISOString(),
+    ...data
+  };
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    console.log('Synced to sheet:', action);
+  } catch (e) {
+    console.error('Sync failed:', e);
+  }
 }
 
 /* ===== AUTH ===== */
 async function handleLogin() {
-  const u = document.getElementById('loginUsername').value.trim();
-  const hn = document.getElementById('loginHN').value.trim();
-  if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
+  const u = document.getElementById('loginUser').value.trim();
+  const h = document.getElementById('loginHN').value.trim();
+  if (!u || !h) { showToast('กรุณากรอกข้อมูลให้ครบ'); return; }
 
+  // 1. ตรวจสอบใน Local ก่อน
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  
-  // ตรวจสอบใน Local ก่อน
-  if (users[u] && users[u].hn === hn) {
+  if (users[u] && users[u].hn === h) {
     currentUser = u;
     localStorage.setItem('seizguard_currentUser', u);
     enterApp();
-  } else {
-    // ถ้าไม่เจอใน Local ลองเช็คใน Google Sheets (ระบบซิงค์ข้ามเครื่อง)
-    showToast('กำลังตรวจสอบข้อมูลผู้ใช้...');
-    try {
-      const res = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', data: { username: u, hn: hn } })
-      });
-      const result = await res.json();
-      if (result.status === 'success') {
-        users[u] = { hn: hn };
-        localStorage.setItem('seizguard_users', JSON.stringify(users));
-        currentUser = u;
-        localStorage.setItem('seizguard_currentUser', u);
-        enterApp();
-      } else {
-        showToast('ไม่พบข้อมูลผู้ใช้ กรุณาลงทะเบียน');
-      }
-    } catch (e) {
-      showToast('ไม่พบข้อมูลผู้ใช้ กรุณาลงทะเบียน');
-    }
+    return;
   }
-}
 
-async function handleRegister() {
-  const u = document.getElementById('loginUsername').value.trim();
-  const hn = document.getElementById('loginHN').value.trim();
-  if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
-
+  // 2. ถ้าไม่เจอใน Local ให้ลองตรวจสอบกับ Google Sheets (เพื่อให้ Login ข้ามเครื่องได้)
+  showToast('กำลังตรวจสอบข้อมูล...');
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'register', data: { username: u, hn: hn } })
-    });
-    const result = await res.json();
-    
-    if (result.status === 'success') {
-      const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-      users[u] = { hn: hn };
+    const response = await fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(h)}`);
+    const result = await response.json();
+    if (result.exists) {
+      users[u] = { hn: h };
       localStorage.setItem('seizguard_users', JSON.stringify(users));
       currentUser = u;
       localStorage.setItem('seizguard_currentUser', u);
       enterApp();
-      showToast('ลงทะเบียนและเข้าสู่ระบบสำเร็จ');
     } else {
-      showToast(result.message || 'ลงทะเบียนไม่สำเร็จ');
+      showToast('ไม่พบข้อมูลผู้ใช้ หรือ HN ไม่ถูกต้อง');
     }
   } catch (e) {
-    showToast('เกิดข้อผิดพลาดในการลงทะเบียน');
+    showToast('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่');
   }
 }
 
-function handleLogout() {
-  currentUser = null;
-  localStorage.removeItem('seizguard_currentUser');
-  document.getElementById('mainApp').classList.remove('active');
-  document.getElementById('loginScreen').classList.add('active');
+function handleRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const h = document.getElementById('regHN').value.trim();
+  if (!u || !h) { showToast('กรุณากรอกข้อมูลให้ครบ'); return; }
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  if (users[u]) { showToast('Username นี้มีในระบบแล้ว'); return; }
+  
+  users[u] = { hn: h };
+  localStorage.setItem('seizguard_users', JSON.stringify(users));
+  
+  // ส่งข้อมูลผู้ใช้ใหม่ไป Google Sheets
+  syncToSheet('register', { hn: h });
+  
+  showToast('ลงทะเบียนสำเร็จ');
+  toggleAuthMode();
+}
+
+function toggleAuthMode() {
+  const isLogin = document.getElementById('loginForm').style.display !== 'none';
+  document.getElementById('loginForm').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('regForm').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('authTitle').textContent = isLogin ? 'ลงทะเบียนใหม่' : 'เข้าสู่ระบบ';
+  document.getElementById('authToggleText').innerHTML = isLogin 
+    ? 'มีบัญชีอยู่แล้ว? <a href="#" onclick="toggleAuthMode()">เข้าสู่ระบบ</a>' 
+    : 'ยังไม่มีบัญชี? <a href="#" onclick="toggleAuthMode()">ลงทะเบียนที่นี่</a>';
 }
 
 function enterApp() {
   document.getElementById('loginScreen').classList.remove('active');
-  document.getElementById('mainApp').classList.add('active');
+  document.getElementById('appScreen').classList.add('active');
   showTab('home');
+}
+
+function handleLogout() {
+  if (confirm('ต้องการออกจากระบบหรือไม่?')) {
+    localStorage.removeItem('seizguard_currentUser');
+    currentUser = null;
+    document.getElementById('appScreen').classList.remove('active');
+    document.getElementById('loginScreen').classList.add('active');
+  }
 }
 
 /* ===== NAVIGATION ===== */
 function showTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-
-  const tabMap = {
-    home: 'tabHome',
-    learn: 'tabLearn',
-    assess: 'tabAssess',
-    profile: 'tabProfile',
-    missedDose: 'tabMissedDose',
-    learnDetail: 'tabLearnDetail',
-    medDetail: 'tabMedDetail'
-  };
-
-  const btnMap = {
-    home: 'tabBtnHome',
-    learn: 'tabBtnLearn',
-    assess: 'tabBtnAssess',
-    profile: 'tabBtnProfile'
-  };
-
-  if (tabMap[tabId]) document.getElementById(tabMap[tabId]).classList.add('active');
-  if (btnMap[tabId]) document.getElementById(btnMap[tabId]).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+  const nav = document.querySelector(`.nav-item[onclick*="'${tabId}'"]`);
+  if (nav) nav.classList.add('active');
 
   if (tabId === 'home') renderHome();
-  if (tabId === 'learn') renderLearnTopics();
   if (tabId === 'assess') renderAssess();
+  if (tabId === 'learn') renderLearnTopics();
   if (tabId === 'profile') renderProfile();
   if (tabId === 'missedDose') renderMissedDose();
+  window.scrollTo(0,0);
 }
 
-/* ===== HOME & MEDICATION LOGS ===== */
+/* ===== HOME / MEDICATION ===== */
 function renderHome() {
-  renderHeaderDate();
-  renderWeekCalendar();
-  generateDailyLogs();
-  renderAdherence();
-  renderMedList();
-}
-
-function renderHeaderDate() {
-  const d = selectedDate;
-  document.getElementById('headerDate').textContent = d.getDate() + ' ' + MONTH_NAMES_TH[d.getMonth()] + ' ' + (d.getFullYear() + 543);
-}
-
-function renderWeekCalendar() {
-  const container = document.getElementById('weekCalendar');
-  const days = [];
-  const start = new Date(selectedDate);
-  start.setDate(start.getDate() - 3);
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
-
-  const todayStr = getDateStr(new Date());
-  const selectedStr = getDateStr(selectedDate);
-
-  container.innerHTML = days.map(d => {
-    const dStr = getDateStr(d);
-    const isSelected = dStr === selectedStr;
-    const isToday = dStr === todayStr && !isSelected;
-    return `
-      <div class="day-item ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}" onclick="selectDate('${dStr}')">
-        <span class="day-name">${DAY_NAMES_TH[d.getDay()]}</span>
-        <span class="day-num">${d.getDate()}</span>
-      </div>
-    `;
-  }).join('');
-}
-
-function selectDate(dateStr) {
-  selectedDate = new Date(dateStr + 'T00:00:00');
-  renderHome();
-}
-
-function generateDailyLogs() {
-  const dateStr = getDateStr(selectedDate);
   const meds = getData('medications');
-  let logs = getData('medLogs');
-
-  meds.forEach(med => {
-    med.times.forEach(time => {
-      const exists = logs.find(l => l.medicationId === med.id && l.scheduledTime === time && l.date === dateStr);
-      if (!exists) {
-        logs.push({
-          id: genId(),
-          medicationId: med.id,
-          scheduledTime: time,
-          takenTime: null,
-          status: 'pending',
-          date: dateStr
-        });
-      }
-    });
-  });
-
-  setData('medLogs', logs);
-}
-
-function renderAdherence() {
-  const logs = getData('medLogs');
-  const now = new Date();
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const recentLogs = logs.filter(l => {
-    const d = new Date(l.date);
-    return d >= sevenDaysAgo && d <= now;
-  });
-
-  const total = recentLogs.length;
-  const taken = recentLogs.filter(l => l.status === 'taken').length;
-  const pct = total > 0 ? Math.round((taken / total) * 100) : 0;
-
-  document.getElementById('adherenceCard').innerHTML = `
-    <div class="adherence-header">
-      <i class="fas fa-chart-bar"></i>
-      <span>Adherence 7 วันล่าสุด</span>
-    </div>
-    <div class="adherence-bar">
-      <div class="adherence-fill" style="width: ${pct}%"></div>
-    </div>
-    <div class="adherence-text">${taken}/${total} มื้อ (${pct}%)</div>
-  `;
-}
-
-function renderMedList() {
-  const meds = getData('medications');
-  const dateStr = getDateStr(selectedDate);
-  const logs = getData('medLogs').filter(l => l.date === dateStr);
-  const isToday = getDateStr(new Date()) === dateStr;
-
-  document.getElementById('medSectionTitle').textContent = isToday ? 'ยาวันนี้' : 'ยาวันที่ ' + selectedDate.getDate();
-
-  if (meds.length === 0 || logs.length === 0) {
-    document.getElementById('medList').innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-pills"></i>
-        <h3>ไม่มีรายการยา</h3>
-        <p>กดปุ่ม + เพื่อเพิ่มรายการยากันชักของคุณ</p>
-      </div>
-    `;
+  const container = document.getElementById('medList');
+  if (meds.length === 0) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-pills"></i><p>ยังไม่มีรายการยา<br>กดปุ่ม + เพื่อเพิ่มยาของคุณ</p></div>';
     return;
   }
 
-  document.getElementById('medList').innerHTML = logs.map(log => {
-    const med = meds.find(m => m.id === log.medicationId);
-    if (!med) return '';
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const logs = getData('medLogs');
 
-    const isTaken = log.status === 'taken';
-    const canTake = isToday && !isTaken;
-
-    let buttonHtml = '';
-    if (isTaken) {
-      buttonHtml = `<span class="taken-badge">กินแล้ว</span>`;
-    } else if (canTake) {
-      buttonHtml = `<button class="take-btn" onclick="event.stopPropagation(); takePill('${log.id}')"><i class="fas fa-check"></i></button>`;
-    } else {
-      buttonHtml = `<span class="taken-badge" style="background: var(--surface2); color: var(--text3)">-</span>`;
-    }
-
+  container.innerHTML = meds.map(med => {
+    const thaiName = getThaiName(med.name);
     return `
-      <div class="med-card ${isTaken ? 'taken' : ''}" onclick="showMedDetail('${med.id}')">
-        <div class="med-icon ${isTaken ? 'done' : 'pending'}">
-          <i class="fas ${isTaken ? 'fa-check-circle' : 'fa-clock'}"></i>
-        </div>
+      <div class="med-card" onclick="showMedDetail('${med.id}')">
         <div class="med-info">
           <div class="med-name">${med.name}</div>
-          <div class="med-dosage">${med.dosage}</div>
-          <div class="med-time-row">
-            <i class="fas fa-clock"></i> ${log.scheduledTime}
-            ${log.takenTime ? `<span class="taken-time">(กินเมื่อ ${log.takenTime})</span>` : ''}
-          </div>
+          ${thaiName ? `<div class="med-thai">${thaiName}</div>` : ''}
+          <div class="med-dosage"><i class="fas fa-prescription-bottle-medical"></i> ${med.dosage}</div>
+          <div class="med-schedule"><i class="fas fa-clock"></i> ${med.times.join(', ')}</div>
         </div>
-        ${buttonHtml}
-      </div>
-    `;
+        <div class="med-status-grid" onclick="event.stopPropagation()">
+          ${med.times.map(time => {
+            const log = logs.find(l => l.medicationId === med.id && l.date === todayStr && l.scheduledTime === time);
+            const isTaken = log && log.status === 'taken';
+            return `<div class="status-btn ${isTaken ? 'taken' : ''}" onclick="toggleMedStatus('${med.id}', '${time}')">
+              <div class="status-time">${time}</div>
+              <div class="status-icon"><i class="fas ${isTaken ? 'fa-check' : 'fa-check'}"></i></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
   }).join('');
 }
 
-async function takePill(logId) {
-  const todayStr = getDateStr(new Date());
+function getThaiName(name) {
+  const found = COMMON_AEDS.find(a => a.name.toLowerCase() === name.toLowerCase());
+  return found ? found.thai : '';
+}
+
+function toggleMedStatus(medId, time) {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
   let logs = getData('medLogs');
-  const idx = logs.findIndex(l => l.id === logId);
+  const idx = logs.findIndex(l => l.medicationId === medId && l.date === todayStr && l.scheduledTime === time);
 
-  if (idx !== -1) {
-    if (logs[idx].date !== todayStr) {
-      showToast('บันทึกได้เฉพาะวันปัจจุบันเท่านั้น');
-      return;
-    }
-
-    const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    logs[idx].status = 'taken';
-    logs[idx].takenTime = getTimeStr();
-    setData('medLogs', logs);
+  if (idx >= 0) {
+    logs.splice(idx, 1);
+    showToast('ยกเลิกการบันทึก');
+  } else {
+    const logEntry = { medicationId: medId, date: todayStr, scheduledTime: time, actualTime: timeStr, status: 'taken' };
+    logs.push(logEntry);
+    showToast('บันทึกการกินยาแล้ว');
     
-    // ส่งข้อมูลไป Google Sheets อัตโนมัติ
-    await syncDataToSheet('medication', {
-      medName: med.name,
-      scheduledTime: logs[idx].scheduledTime,
-      date: logs[idx].date,
-      takenTime: logs[idx].takenTime
+    // ส่งข้อมูลไป Google Sheets
+    const meds = getData('medications');
+    const med = meds.find(m => m.id === medId);
+    syncToSheet('logMedication', {
+      date: todayStr,
+      medName: med ? med.name : 'Unknown',
+      scheduledTime: time,
+      actualTime: timeStr,
+      status: 'กินแล้ว'
     });
-
-    renderHome();
-    showToast('บันทึกการกินยาเรียบร้อยแล้ว');
   }
+  setData('medLogs', logs);
+  renderHome();
 }
 
-/* ===== ADD MEDICATION ===== */
-function showAddMedModal() {
-  document.getElementById('medName').value = '';
-  document.getElementById('medDosage').value = '';
-  document.getElementById('medPillCount').value = '';
-  document.getElementById('medNotes').value = '';
-  selectedTimes = ['08:00', '21:00'];
-  renderCommonMeds();
+/* ===== ADD MED MODAL ===== */
+function initAddMedModal() {
+  const select = document.getElementById('medNameSelect');
+  select.innerHTML = '<option value="">-- เลือกยา หรือพิมพ์ชื่อเองด้านล่าง --</option>' + 
+    COMMON_AEDS.map(a => `<option value="${a.name}">${a.name} (${a.thai})</option>`).join('');
+  
+  selectedTimes = ['08:00'];
   renderTimeOptions();
-  showModal('addMedModal');
 }
 
-function renderCommonMeds() {
-  document.getElementById('commonMedsList').innerHTML = COMMON_AEDS.map(med => `
-    <button class="common-med-tag" onclick="document.getElementById('medName').value='${med.name}'">
-      ${med.name} <br> <small>${med.thai}</small>
-    </button>
-  `).join('');
+function onMedSelectChange() {
+  const select = document.getElementById('medNameSelect');
+  const input = document.getElementById('medName');
+  if (select.value) input.value = select.value;
 }
 
 function renderTimeOptions() {
-  document.getElementById('timeOptions').innerHTML = TIME_PRESETS.map(preset => {
-    const isSelected = selectedTimes.includes(preset.time);
-    return `
-      <div class="time-option ${isSelected ? 'selected' : ''}" onclick="toggleTime('${preset.time}')">
-        <i class="fas ${isSelected ? 'fa-check-circle' : 'fa-circle'}"></i>
-        ${preset.label} (${preset.time})
-      </div>
-    `;
+  const container = document.getElementById('timeOptions');
+  container.innerHTML = TIME_PRESETS.map(p => {
+    const isActive = selectedTimes.includes(p.time);
+    return `<div class="time-chip ${isActive ? 'active' : ''}" onclick="toggleTime('${p.time}')">${p.label} (${p.time})</div>`;
   }).join('');
 }
 
 function toggleTime(time) {
-  if (selectedTimes.includes(time)) {
-    selectedTimes = selectedTimes.filter(t => t !== time);
-  } else {
-    selectedTimes.push(time);
-  }
+  if (selectedTimes.includes(time)) selectedTimes = selectedTimes.filter(t => t !== time);
+  else selectedTimes.push(time);
   selectedTimes.sort();
   renderTimeOptions();
 }
@@ -600,26 +501,26 @@ function showMedDetail(medId) {
   const thaiName = getThaiName(med.name);
   document.getElementById('medDetailTitle').textContent = med.name;
   document.getElementById('deleteMedBtn').onclick = () => {
-    if (confirm('ต้องการลบรายการยา ' + med.name + ' หรือไม่?')) {
-      const updatedMeds = getData('medications').filter(m => m.id !== medId);
-      setData('medications', updatedMeds);
+    if (confirm('ต้องการลบ ' + med.name + ' หรือไม่?')) {
+      const ms = getData('medications').filter(m => m.id !== medId);
+      setData('medications', ms);
       showTab('home');
-      showToast('ลบรายการยาเรียบร้อยแล้ว');
+      showToast('ลบรายการยาแล้ว');
     }
   };
 
-  const allLogs = getData('medLogs').filter(l => l.medicationId === medId).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
+  const allLogs = getData('medLogs').filter(l => l.medicationId === medId).sort((a,b) => b.date.localeCompare(a.date)).slice(0,14);
   const takenCount = allLogs.filter(l => l.status === 'taken').length;
   const totalCount = allLogs.length;
-  const adherencePct = totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
+  const adherencePct = totalCount > 0 ? Math.round(takenCount / totalCount * 100) : 0;
 
   document.getElementById('medDetailContent').innerHTML = `
     <div class="detail-card">
       <div class="info-grid">
-        <div class="info-item"><div class="info-label">ชื่อยา</div><div class="info-value">${med.name}</div>${thaiName ? `<div style="font-size: 13px; color: var(--text2); margin-top: 2px">${thaiName}</div>` : ''}</div>
+        <div class="info-item"><div class="info-label">ชื่อยา</div><div class="info-value">${med.name}</div>${thaiName ? `<div style="font-size:13px;color:var(--text2);margin-top:2px">${thaiName}</div>` : ''}</div>
         <div class="info-item"><div class="info-label">ขนาดยา</div><div class="info-value">${med.dosage}</div></div>
       </div>
-      <div class="info-grid" style="margin-top: 12px">
+      <div class="info-grid" style="margin-top:12px">
         <div class="info-item"><div class="info-label">จำนวนครั้ง/วัน</div><div class="info-value">${med.frequency} ครั้ง</div></div>
         ${med.pillCount > 0 ? `<div class="info-item"><div class="info-label">จำนวนเม็ดที่ได้รับ</div><div class="info-value">${med.pillCount} เม็ด</div></div>` : ''}
       </div>
@@ -631,263 +532,316 @@ function showMedDetail(medId) {
     <div class="detail-card">
       <h4>สถิติการกินยา (14 วันล่าสุด)</h4>
       <div class="stats-row">
-        <div class="stat-item"><div class="stat-num" style="color: var(--success)">${takenCount}</div><div class="stat-label">กินแล้ว</div></div>
-        <div class="stat-item"><div class="stat-num" style="color: var(--danger)">${totalCount - takenCount}</div><div class="stat-label">ขาด/รอ</div></div>
-        <div class="stat-item"><div class="stat-num" style="color: var(--primary)">${adherencePct}%</div><div class="stat-label">Adherence</div></div>
+        <div class="stat-item"><div class="stat-num" style="color:var(--success)">${takenCount}</div><div class="stat-label">กินแล้ว</div></div>
+        <div class="stat-item"><div class="stat-num" style="color:var(--danger)">${totalCount - takenCount}</div><div class="stat-label">ขาด/รอ</div></div>
+        <div class="stat-item"><div class="stat-num" style="color:var(--primary)">${adherencePct}%</div><div class="stat-label">Adherence</div></div>
       </div>
-      <div class="adherence-bar"><div class="adherence-fill" style="width: ${adherencePct}%"></div></div>
+      <div class="adherence-bar"><div class="adherence-fill" style="width:${adherencePct}%"></div></div>
     </div>
     <div class="detail-card">
       <h4>ประวัติล่าสุด</h4>
-      ${allLogs.length === 0 ? '<p style="text-align: center; color: var(--text3); padding: 20px">ยังไม่มีประวัติ</p>' : ''}
-      ${allLogs.slice(0, 7).map(l => {
-        const color = l.status === 'taken' ? 'var(--success)' : (l.status === 'missed' ? 'var(--danger)' : 'var(--warning)');
-        const statusText = l.status === 'taken' ? 'กินแล้ว' : (l.status === 'missed' ? 'ขาด' : 'รอ');
-        return `<div class="log-row"><div class="log-dot" style="background: ${color}"></div><div class="log-row-date">${l.date}</div><div class="log-row-time">${l.scheduledTime}</div><div class="log-row-status" style="color: ${color}">${statusText}</div></div>`;
+      ${allLogs.length === 0 ? '<p style="text-align:center;color:var(--text3);padding:20px">ยังไม่มีประวัติ</p>' : ''}
+      ${allLogs.slice(0,7).map(l => {
+        const c = l.status === 'taken' ? 'var(--success)' : l.status === 'missed' ? 'var(--danger)' : 'var(--warning)';
+        const s = l.status === 'taken' ? 'กินแล้ว' : l.status === 'missed' ? 'ขาด' : 'รอ';
+        return `<div class="log-row"><div class="log-dot" style="background:${c}"></div><div class="log-row-date">${l.date}</div><div class="log-row-time">${l.scheduledTime}</div><div class="log-row-status" style="color:${c}">${s}</div></div>`;
       }).join('')}
     </div>
-    ${med.notes ? `<div class="detail-card"><h4>หมายเหตุ</h4><p style="font-size: 14px; color: var(--text2); line-height: 1.6">${med.notes}</p></div>` : ''}`;
+    ${med.notes ? `<div class="detail-card"><h4>หมายเหตุ</h4><p style="font-size:14px;color:var(--text2);line-height:1.6">${med.notes}</p></div>` : ''}`;
 
   showTab('medDetail');
 }
 
-/* ===== LEARN TOPICS CONTENT (FULL VERSION) ===== */
-const LEARN_TOPICS = [
-  { id: 'what-is-seizure', icon: 'fa-bolt', color: 'var(--accent)', bg: 'var(--accent-soft)', title: 'อาการชักคืออะไร', sub: 'ความรู้พื้นฐาน, ชนิดของอาการชัก, สาเหตุ' },
-  { id: 'why-aeds', icon: 'fa-pills', color: 'var(--primary)', bg: '#E0F4F4', title: 'ทำไมต้องกินยากันชัก', sub: 'เหตุผล, ประโยชน์, กลุ่มผู้ป่วยที่ต้องใช้ยา' },
-  { id: 'tbi-criteria', icon: 'fa-shield-halved', color: '#6366F1', bg: '#EEF2FF', title: 'เกณฑ์การให้ยาหลัง Head Injury', sub: 'Criteria, งานวิจัย, แนวทางปฏิบัติ' },
-  { id: 'side-effects', icon: 'fa-exclamation-triangle', color: 'var(--warning)', bg: 'var(--warning-light)', title: 'ผลข้างเคียงยากันชัก', sub: 'อาการที่ควรสังเกต, เมื่อไหร่ควรพบแพทย์' },
-  { id: 'missed-dose-guide', icon: 'fa-circle-question', color: '#EC4899', bg: '#FDF2F8', title: 'ถ้าลืมกินยากันชักควรทำอย่างไร', sub: 'คำแนะนำเมื่อลืมกินยา, หลักปฏิบัติ' },
-  { id: 'seizure-first-aid', icon: 'fa-heart-pulse', color: 'var(--danger)', bg: 'var(--danger-light)', title: 'การปฐมพยาบาลเมื่อมีอาการชัก', sub: 'สิ่งที่ควรทำ/ไม่ควรทำ สำหรับผู้ดูแล' },
-  { id: 'self-observation', icon: 'fa-eye', color: '#0EA5E9', bg: '#F0F9FF', title: 'การสังเกตอาการตนเอง', sub: 'สัญญาณเตือนก่อนชัก, การบันทึกอาการ' },
-  { id: 'research-evidence', icon: 'fa-file-lines', color: '#8B5CF6', bg: '#F5F3FF', title: 'หลักฐานเชิงประจักษ์และงานวิจัย', sub: 'Systematic reviews, Practice guidelines' },
-];
-
-function renderLearnTopics() {
-  document.getElementById('learnTopicsList').innerHTML = LEARN_TOPICS.map(topic => `
-    <div class="topic-card" onclick="showLearnDetail('${topic.id}')">
-      <div class="topic-icon" style="background: ${topic.bg}; color: ${topic.color}">
-        <i class="fas ${topic.icon}"></i>
-      </div>
-      <div class="topic-info">
-        <div class="topic-title">${topic.title}</div>
-        <div class="topic-sub">${topic.sub}</div>
-      </div>
-      <i class="fas fa-chevron-right" style="color: var(--text3)"></i>
-    </div>
-  `).join('') + `
-    <div class="disclaimer-card">
-      <i class="fas fa-info-circle"></i>
-      <p>ข้อมูลในหน้านี้จัดทำเพื่อการให้ความรู้เท่านั้น ไม่ใช่การวินิจฉัยหรือการรักษาโรคโดยแพทย์ กรุณาปรึกษาแพทย์เจ้าของไข้สำหรับข้อมูลเฉพาะบุคคล</p>
-    </div>
-  `;
-}
-
-const LEARN_CONTENT = {
-  'what-is-seizure': {
-    title: 'อาการชักคืออะไร',
-    sections: [
-      { title: 'อาการชักคืออะไร?', body: 'อาการชัก (Seizure) คือภาวะที่เกิดจากกระแสไฟฟ้าในสมองทำงานผิดปกติอย่างฉับพลัน ส่งผลให้เกิดอาการต่างๆ เช่น กล้ามเนื้อเกร็งกระตุก หมดสติ ตาค้าง หรือพฤติกรรมผิดปกติชั่วคราว' },
-      { title: 'ชนิดของอาการชัก', body: '1. Generalized seizures: อาการชักทั้งตัว รวมถึง Tonic-clonic (เกร็งกระตุก), Absence (เหม่อ), Myoclonic (กระตุกสั้นๆ)\n\n2. Focal seizures: อาการชักเฉพาะที่ อาจมีหรือไม่มีการเปลี่ยนแปลงระดับความรู้สึกตัว\n\n3. Unknown onset: อาการชักที่ไม่ทราบจุดเริ่มต้น', ref: 'Fisher RS, et al. ILAE official report: a practical clinical definition of epilepsy. Epilepsia. 2014;55(4):475-482.' },
-      { title: 'โรคลมชัก (Epilepsy) คืออะไร?', body: 'โรคลมชักคือภาวะที่มีอาการชักซ้ำตั้งแต่ 2 ครั้งขึ้นไป โดยไม่มีสาเหตุกระตุ้นเฉพาะเจาะจง (unprovoked seizures) หรือมีอาการชักครั้งเดียวแต่มีความเสี่ยงสูงที่จะเกิดซ้ำ', ref: 'International League Against Epilepsy (ILAE) Classification, 2017.' },
-    ]
-  },
-  'why-aeds': {
-    title: 'ทำไมต้องกินยากันชัก',
-    sections: [
-      { title: 'เหตุผลที่ต้องกินยากันชัก', body: 'ยากันชัก (Antiepileptic Drugs: AEDs) ใช้เพื่อ:\n\n1. รักษาโรคลมชัก (Epilepsy) ป้องกันอาการชักซ้ำ\n2. ป้องกันอาการชักเฉียบพลันหลังบาดเจ็บที่ศีรษะ (Head injury/TBI) ในผู้ที่มีความเสี่ยงสูง\n3. ป้องกันอาการชักหลังผ่าตัดสมอง' },
-      { title: 'ประโยชน์ของการกินยาสม่ำเสมอ', body: '- ลดความถี่ของอาการชัก\n- ป้องกันภาวะชักต่อเนื่อง (Status epilepticus) ซึ่งเป็นอันตรายถึงชีวิต\n- ช่วยให้ดำเนินชีวิตประจำวันได้ปกติ\n- ลดความเสี่ยงการบาดเจ็บจากอาการชัก\n- ป้องกันความเสียหายต่อสมองจากการชักซ้ำ', ref: 'Kwan P, et al. Early identification of refractory epilepsy. N Engl J Med. 2000;342(5):314-319.' },
-      { title: 'กลุ่มผู้ป่วยที่ใช้ยากันชัก', body: '- ผู้ที่ได้รับการวินิจฉัยว่าเป็นโรคลมชัก\n- ผู้ป่วย TBI/ภาวะสมองบาดเจ็บที่มีความเสี่ยงสูง\n- ผู้ป่วยหลังผ่าตัดสมอง\n- ผู้ป่วยที่อยู่ในระยะฟื้นฟูหลังอุบัติเหตุทางสมอง' },
-    ]
-  },
-  'tbi-criteria': {
-    title: 'เกณฑ์การให้ยาหลัง Head Injury',
-    sections: [
-      { title: 'เกณฑ์ความเสี่ยงสูงในการเกิดชักหลัง TBI', body: 'ผู้ป่วยที่มีปัจจัยเสี่ยงต่อไปนี้ ควรได้รับยากันชักเพื่อป้องกัน:\n\n- Intracranial hemorrhage (เลือดออกในสมอง)\n- Depressed skull fracture (กะโหลกยุบ)\n- Penetrating brain injury (บาดเจ็บแบบทะลุ)\n- Prolonged loss of consciousness > 24 ชั่วโมง\n- GCS < 10\n- อายุ > 65 ปี\n- ประวัติเป็นโรคลมชักมาก่อน', ref: 'Temkin NR, et al. A randomized, double-blind study of phenytoin for the prevention of post-traumatic seizures. N Engl J Med. 1990;323(8):497-502.' },
-      { title: 'Early vs Late Post-traumatic Seizures', body: 'Early seizures: เกิดภายใน 7 วันหลังบาดเจ็บ\n- ยากันชักมีประสิทธิภาพในการป้องกัน early seizures\n- ลดการเกิดชักได้อย่างมีนัยสำคัญทางสถิติ\n\nLate seizures: เกิดหลัง 7 วัน\n- ยากันชักไม่ได้ลดการเกิด late seizures อย่างมีนัยสำคัญ\n- แนะนำให้ใช้ยาป้องกันเป็นเวลา 7 วัน (ในกลุ่มเสี่ยงสูง)', ref: 'Chang BS, Lowenstein DH. Practice parameter: antiepileptic drug prophylaxis in severe traumatic brain injury. Neurology. 2003;60(1):10-16. (AAN Practice Parameter)' },
-      { title: 'แนวทางจาก Cochrane Systematic Review', body: '"การให้ยากันชักหลัง traumatic brain injury ช่วยลดการเกิดอาการชักภายใน 7 วันแรกในผู้ที่มีความเสี่ยงสูง แต่ไม่ลดการชักในระยะยาว"\n\nLevetiracetam และ Phenytoin มีประสิทธิภาพเทียบเคียงกันในการป้องกัน early seizures หลัง TBI', ref: 'Thompson K, et al. Pharmacological treatments for preventing epilepsy following traumatic head injury. Cochrane Database Syst Rev. 2015.\n\nInaba K, et al. A prospective multicenter comparison of levetiracetam versus phenytoin for early posttraumatic seizure prophylaxis. J Trauma Acute Care Surg. 2013;74(3):766-771.' },
-    ]
-  },
-  'side-effects': {
-    title: 'ผลข้างเคียงยากันชัก',
-    sections: [
-      { title: 'ผลข้างเคียงที่พบได้บ่อย (ทุกยา)', body: 'ยากันชักทุกตัวอาจทำให้เกิด:\n\n- เวียนศีรษะ / มึนงง\n- ง่วงนอน / อ่อนเพลีย\n- คลื่นไส้ / อาเจียน\n- ปวดศีรษะ\n- ตาพร่า / เห็นภาพซ้อน\n- เดินเซ / ทรงตัวไม่ดี', ref: 'Perucca P, Gilliam FG. Adverse effects of antiepileptic drugs. Lancet Neurol. 2012;11(9):792-802.' },
-      { title: 'ผลข้างเคียงเฉพาะยาแต่ละตัว', body: 'Phenytoin (เฟนิโทอิน):\n• เหงือกบวม (Gingival Hyperplasia) — พบบ่อย\n• ขนดก / ผมขึ้นมาก (Hirsutism) — พบได้\n• เดินเซ / ทรงตัวไม่ดี (Ataxia) — พบบ่อย\n• ตาพร่า / เห็นภาพซ้อน — พบบ่อย\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nCarbamazepine (คาร์บามาซีพีน):\n• โซเดียมในเลือดต่ำ (Hyponatremia) — พบได้\n• เม็ดเลือดขาวต่ำ (Leukopenia) — พบได้\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nValproate (วัลโปรเอต):\n• น้ำหนักเพิ่ม — พบบ่อย\n• ผมร่วง — พบบ่อย\n• มือสั่น (Tremor) — พบบ่อย\n• ตับอักเสบ (Hepatotoxicity) — หายาก แต่อันตราย\n• ตับอ่อนอักเสบ (Pancreatitis) — หายาก แต่อันตราย\n\nLevetiracetam (ลีเวไทราซีแทม):\n• หงุดหงิด / อารมณ์แปรปรวน — พบบ่อย\n• นอนไม่หลับ — พบบ่อย\n• ซึมเศร้า / ก้าวร้าว — พบได้\n\nLamotrigine (ลาโมไทรจีน):\n• ผื่นผิวหนัง (พบบ่อยในเด็ก)\n• ผื่นรุนแรง / SJS (หายาก แต่อันตราย)\n• เวียนศีรษะ / ปวดศีรษะ' },
-      { title: 'เมื่อไหร่ควรพบแพทย์ทันที?', body: '- มีผื่นผิวหนังลามรุนแรง หรือมีตุ่มพองในปาก\n- ตัวเหลือง ตาเหลือง\n- มีอาการแพ้ยาเฉียบพลัน (หน้าบวม ปากบวม หายใจลำบาก)\n- อารมณ์เปลี่ยนแปลงรุนแรง มีความคิดอยากทำร้ายตนเอง\n- อาการชักรุนแรงขึ้นหรือถี่ขึ้นผิดปกติ' }
-    ]
-  },
-  'missed-dose-guide': {
-    title: 'ถ้าลืมกินยากันชักควรทำอย่างไร',
-    sections: [
-      { title: 'หลักปฏิบัติทั่วไปเมื่อลืมกินยา', body: '1. หากนึกได้ไม่นานหลังเวลาปกติ: ให้กินยามื้อที่ลืมทันที\n\n2. หากนึกได้เมื่อใกล้ถึงเวลามื้อถัดไป: ให้ข้ามมื้อที่ลืมไป และกินมื้อถัดไปตามปกติในขนาดเดิม\n\n3. ห้ามกินยาเป็น 2 เท่า: ไม่ว่ากรณีใดก็ตาม ห้ามเพิ่มขนาดยาเป็นสองเท่าเพื่อชดเชยมื้อที่ลืม เพราะอาจเกิดพิษจากยาได้', ref: 'Epilepsy Foundation. Missing a Dose. [Online]' },
-      { title: 'ระบบช่วยคำนวณในแอปนี้', body: 'คุณสามารถใช้ฟังก์ชัน "ลืมกินยา" ในหน้าแรกของแอปเพื่อช่วยประเมินเบื้องต้นได้ โดยระบบจะใช้หลักการ "ครึ่งหนึ่งของช่วงเวลาห่างระหว่างมื้อ" (Halfway point rule) ในการแนะนำ' }
-    ]
-  },
-  'seizure-first-aid': {
-    title: 'การปฐมพยาบาลเมื่อมีอาการชัก',
-    sections: [
-      { title: 'สิ่งที่ "ควรทำ" (DOs)', body: '- ตั้งสติ และดูเวลาที่เริ่มชัก\n- ประคองผู้ป่วยลงนอนในที่ปลอดภัย\n- คลายเสื้อผ้าให้หลวม โดยเฉพาะบริเวณคอ\n- จับผู้ป่วยนอนตะแคงข้าง (Recovery position) เพื่อป้องกันการสำลักน้ำลายหรืออาเจียน\n- นำสิ่งของมีคมหรือของแข็งออกจากบริเวณนั้น\n- อยู่กับผู้ป่วยจนกว่าจะฟื้นคืนสติสมบูรณ์' },
-      { title: 'สิ่งที่ "ห้ามทำ" (DON\'Ts)', body: '- ห้าม! เอาสิ่งของใดๆ ใส่ปากผู้ป่วย (เช่น ช้อน นิ้วมือ ผ้าเช็ดหน้า) เพราะอาจทำให้ฟันหักหรืออุดกั้นทางเดินหายใจ\n- ห้าม! งัดปากผู้ป่วย\n- ห้าม! กดหรือฝืนอาการเกร็งกระตุกรุนแรง\n- ห้าม! ให้ผู้ป่วยดื่มน้ำหรือกินยาจนกว่าจะฟื้นสติสมบูรณ์' },
-      { title: 'เมื่อไหร่ควรเรียกรถพยาบาล (1669)?', body: '- ชักต่อเนื่องนานเกิน 5 นาที\n- ชักซ้ำติดกันโดยที่ยังไม่ฟื้นสติ\n- ชักในน้ำ\n- ได้รับบาดเจ็บรุนแรงขณะชัก\n- เป็นการชักครั้งแรกในชีวิต\n- ผู้ป่วยตั้งครรภ์หรือเป็นโรคเบาหวาน\n- ผู้ป่วยไม่หายใจหลังหยุดชัก', ref: 'American Epilepsy Society. Seizure First Aid. [Online]' }
-    ]
-  },
-  'self-observation': {
-    title: 'การสังเกตอาการตนเอง',
-    sections: [
-      { title: 'สัญญาณเตือนก่อนชัก (Aura)', body: 'ผู้ป่วยบางรายอาจมีความรู้สึกเตือนก่อนชัก เช่น:\n- รู้สึกมวนท้องแปลกๆ\n- ได้กลิ่นหรือรสชาติที่ไม่มีอยู่จริง\n- รู้สึกเดจาวู (เหมือนเคยเห็นเหตุการณ์นี้มาก่อน)\n- รู้สึกกลัวหรือกังวลอย่างกะทันหัน\n- ชาหรือวูบตามตัว' },
-      { title: 'การบันทึกอาการ (Seizure Diary)', body: 'การบันทึกข้อมูลในแอปนี้จะช่วยให้แพทย์รักษาได้แม่นยำขึ้น:\n- วันและเวลาที่ชัก\n- ระยะเวลาที่ชัก\n- ลักษณะอาการ (เกร็ง, กระตุก, เหม่อ)\n- ปัจจัยกระตุ้น (อดนอน, เครียด, ลืมกินยา, มีไข้)\n- อาการหลังชัก (สับสน, ปวดหัว, อ่อนแรง)' }
-    ]
-  },
-  'research-evidence': {
-    title: 'หลักฐานเชิงประจักษ์และงานวิจัย',
-    sections: [
-      { title: 'ประสิทธิภาพของแอปพลิเคชันในการจัดการโรคลมชัก', body: 'งานวิจัยพบว่าการใช้ Mobile Health (mHealth) ช่วยเพิ่มความร่วมมือในการกินยา (Medication Adherence) และลดความถี่ของอาการชักได้อย่างมีนัยสำคัญ เมื่อเทียบกับการบันทึกด้วยกระดาษแบบเดิม', ref: 'Escoffery C, et al. A systematic review of self-management interventions for adults with epilepsy. Epilepsy Behav. 2015.' },
-      { title: 'ความสำคัญของการป้องกันการชักหลัง TBI', body: 'การให้ยากันชักในช่วง 7 วันแรกหลังบาดเจ็บที่ศีรษะระดับรุนแรง เป็นมาตรฐานการรักษาที่ได้รับการยอมรับทั่วโลก (Level I evidence)', ref: 'Brain Trauma Foundation. Guidelines for the Management of Severe Traumatic Brain Injury. 4th Edition.' }
-    ]
-  }
-};
-
-function showLearnDetail(topicId) {
-  const content = LEARN_CONTENT[topicId];
-  if (!content) return;
-
-  document.getElementById('learnDetailTitle').textContent = content.title;
-  document.getElementById('learnDetailContent').innerHTML = content.sections.map(s => `
-    <div class="detail-card">
-      <h4>${s.title}</h4>
-      <p style="white-space: pre-wrap; font-size: 15px; line-height: 1.6; color: var(--text1)">${s.body}</p>
-      ${s.ref ? `<div class="ref-box"><strong>อ้างอิง:</strong> ${s.ref}</div>` : ''}
-    </div>
-  `).join('');
-
-  showTab('learnDetail');
-}
-
-/* ===== ASSESSMENT (SEIZURE & SIDE EFFECTS) ===== */
+/* ===== ASSESS / LOGS ===== */
 function renderAssess() {
-  const seizureLogs = getData('seizureLogs').sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
-  const sideEffectLogs = getData('sideEffectLogs').sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+  const seizures = getData('seizures').sort((a,b) => b.dateTime.localeCompare(a.dateTime));
+  const sideEffects = getData('sideEffects').sort((a,b) => b.dateTime.localeCompare(a.dateTime));
 
-  document.getElementById('seizureLogsList').innerHTML = seizureLogs.length ? seizureLogs.map(log => `
-    <div class="log-item">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px">
-        <strong>${log.date} ${log.time}</strong>
-        <span class="badge" style="background: ${SEVERITY_DESCRIPTIONS[parseInt(log.severity) || 1].color}; color: white; font-size: 11px">ระดับ ${log.severity}</span>
-      </div>
-      <div style="font-size: 13px; color: var(--text2)">
-        <i class="fas fa-clock"></i> นาน ${log.duration} | <i class="fas fa-notes-medical"></i> ${log.symptoms}
-      </div>
-      ${log.notes ? `<div style="font-size: 12px; color: var(--text3); margin-top: 4px; font-style: italic">"${log.notes}"</div>` : ''}
-    </div>
-  `).join('') : '<p class="empty-text">ยังไม่มีประวัติการชัก</p>';
+  document.getElementById('seizureHistory').innerHTML = seizures.length === 0 
+    ? '<p class="empty-text">ไม่มีประวัติการชัก</p>'
+    : seizures.slice(0, 5).map(s => {
+        const sev = SEVERITY_DESCRIPTIONS[s.severity];
+        return `
+          <div class="history-item">
+            <div class="history-main">
+              <div class="history-date">${new Date(s.dateTime).toLocaleString('th-TH')}</div>
+              <div class="history-meta">ระยะเวลา: ${s.duration} นาที | ความรุนแรง: <span style="color:${sev.color}">${sev.label}</span></div>
+              <div class="history-tags">${s.symptoms.map(sym => `<span class="history-tag">${sym}</span>`).join('')}</div>
+            </div>
+            <button class="delete-log-btn" onclick="deleteLog('seizures', '${s.id}')"><i class="fas fa-times"></i></button>
+          </div>`;
+      }).join('');
 
-  document.getElementById('sideEffectLogsList').innerHTML = sideEffectLogs.length ? sideEffectLogs.map(log => `
-    <div class="log-item">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px">
-        <strong>${log.date}</strong>
-        <span class="badge" style="background: ${SIDE_EFFECT_SEVERITY_DESCRIPTIONS[parseInt(log.severity) || 1].color}; color: white; font-size: 11px">ระดับ ${log.severity}</span>
-      </div>
-      <div style="font-size: 13px; color: var(--text2)">
-        <i class="fas fa-pills"></i> ยาที่สงสัย: ${log.suspectedMeds}
-      </div>
-      <div style="font-size: 13px; color: var(--text2); margin-top: 2px">
-        <i class="fas fa-exclamation-triangle"></i> อาการ: ${log.symptoms}
-      </div>
-      ${log.notes ? `<div style="font-size: 12px; color: var(--text3); margin-top: 4px; font-style: italic">"${log.notes}"</div>` : ''}
-    </div>
-  `).join('') : '<p class="empty-text">ยังไม่มีประวัติผลข้างเคียง</p>';
+  document.getElementById('sideEffectHistory').innerHTML = sideEffects.length === 0
+    ? '<p class="empty-text">ไม่มีประวัติผลข้างเคียง</p>'
+    : sideEffects.slice(0, 5).map(s => {
+        const sev = SIDE_EFFECT_SEVERITY_DESCRIPTIONS[s.severity];
+        return `
+          <div class="history-item">
+            <div class="history-main">
+              <div class="history-date">${new Date(s.dateTime).toLocaleString('th-TH')}</div>
+              <div class="history-meta">ยาที่สงสัย: ${s.medName} | ความรุนแรง: <span style="color:${sev.color}">${sev.label}</span></div>
+              <div class="history-tags">${s.symptoms.map(sym => `<span class="history-tag">${sym}</span>`).join('')}</div>
+            </div>
+            <button class="delete-log-btn" onclick="deleteLog('sideEffects', '${s.id}')"><i class="fas fa-times"></i></button>
+          </div>`;
+      }).join('');
 }
 
-async function saveSeizureLog() {
-  const duration = document.getElementById('seizureDuration').value;
-  if (!duration) { showToast('กรุณาเลือกระยะเวลาที่ชัก'); return; }
+function deleteLog(type, id) {
+  if (confirm('ต้องการลบข้อมูลนี้ใช่หรือไม่?')) {
+    let logs = getData(type);
+    logs = logs.filter(l => l.id !== id);
+    setData(type, logs);
+    renderAssess();
+    showToast('ลบข้อมูลแล้ว');
+  }
+}
 
-  const severity = document.getElementById('seizureSevBadge').textContent;
-  const date = document.getElementById('seizureDate').textContent;
-  const time = document.getElementById('seizureTime').textContent;
+/* ===== SEIZURE MODAL ===== */
+function initSeizureModal() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('seizureDateTime').value = now.toISOString().slice(0, 16);
+  
+  const container = document.getElementById('seizureSymptomsList');
+  container.innerHTML = SEIZURE_SYMPTOMS.map(s => 
+    `<div class="check-item" onclick="toggleCheck(this)">
+      <input type="checkbox" value="${s.name}" data-weight="${s.weight}">
+      <span>${s.name}</span>
+    </div>`
+  ).join('');
+}
+
+function toggleCheck(el) {
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('active', cb.checked);
+}
+
+function saveSeizure() {
+  const dateTime = document.getElementById('seizureDateTime').value;
+  const duration = parseFloat(document.getElementById('seizureDuration').value) || 0;
+  const symptoms = Array.from(document.querySelectorAll('#seizureSymptomsList input:checked')).map(i => i.value);
   const notes = document.getElementById('seizureNotes').value.trim();
-  const symptoms = seizureSymptoms.join(', ');
 
-  const logs = getData('seizureLogs');
-  const newLog = { id: genId(), date, time, duration, symptoms, severity, notes, timestamp: Date.now() };
-  logs.push(newLog);
-  setData('seizureLogs', logs);
+  if (!dateTime) { showToast('กรุณาระบุวันเวลา'); return; }
+  if (symptoms.length === 0) { showToast('กรุณาเลือกอาการอย่างน้อย 1 อย่าง'); return; }
 
+  // คำนวณความรุนแรง (Logic เดิม)
+  let score = 0;
+  document.querySelectorAll('#seizureSymptomsList input:checked').forEach(i => score += parseInt(i.dataset.weight));
+  if (duration > 5) score += 5; else if (duration > 2) score += 3; else score += 1;
+  
+  let severity = 1;
+  if (score >= 10 || duration > 5) severity = 5;
+  else if (score >= 7) severity = 4;
+  else if (score >= 4) severity = 3;
+  else if (score >= 2) severity = 2;
+
+  const logs = getData('seizures');
+  const entry = { id: genId(), dateTime, duration, symptoms, severity, notes };
+  logs.push(entry);
+  setData('seizures', logs);
+  
   // ส่งข้อมูลไป Google Sheets
-  await syncDataToSheet('seizure', {
-    date, time, duration, symptoms, severity, notes
+  syncToSheet('logSeizure', {
+    dateTime: dateTime,
+    duration: duration,
+    symptoms: symptoms.join(', '),
+    severity: SEVERITY_DESCRIPTIONS[severity].label,
+    notes: notes
   });
 
   closeModal('seizureModal');
   renderAssess();
-  showToast('บันทึกอาการชักเรียบร้อยแล้ว');
+  showSeverityResult(severity, SEVERITY_DESCRIPTIONS);
 }
 
-async function saveSideEffectLog() {
-  if (sideEffectSymptoms.length === 0) { showToast('กรุณาเลือกอาการอย่างน้อย 1 อย่าง'); return; }
+/* ===== SIDE EFFECT MODAL ===== */
+function initSideEffectModal() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('sideEffectDateTime').value = now.toISOString().slice(0, 16);
+  
+  const meds = getData('medications');
+  const select = document.getElementById('sideEffectMed');
+  select.innerHTML = '<option value="ไม่ระบุ / อื่นๆ">ไม่ระบุ / อื่นๆ</option>' + 
+    meds.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  
+  updateSideEffectSymptoms();
+}
 
-  const severity = document.getElementById('sideEffectSevBadge').textContent;
-  const date = document.getElementById('sideEffectDate').textContent;
-  const meds = sideEffectMeds.join(', ');
-  const symptoms = sideEffectSymptoms.join(', ');
+function updateSideEffectSymptoms() {
+  const medName = document.getElementById('sideEffectMed').value;
+  const container = document.getElementById('sideEffectSymptomsList');
+  const list = AED_SIDE_EFFECTS[medName] || SIDE_EFFECTS_LIST;
+  
+  container.innerHTML = list.map(s => 
+    `<div class="check-item" onclick="toggleCheck(this)">
+      <input type="checkbox" value="${s.name}" data-weight="${s.weight}">
+      <span>${s.name} ${s.freq ? `<small>(${s.freq})</small>` : ''}</span>
+    </div>`
+  ).join('');
+}
+
+function saveSideEffect() {
+  const dateTime = document.getElementById('sideEffectDateTime').value;
+  const medName = document.getElementById('sideEffectMed').value;
+  const symptoms = Array.from(document.querySelectorAll('#sideEffectSymptomsList input:checked')).map(i => i.value);
   const notes = document.getElementById('sideEffectNotes').value.trim();
 
-  const logs = getData('sideEffectLogs');
-  const newLog = { id: genId(), date, suspectedMeds: meds, symptoms, severity, notes, timestamp: Date.now() };
-  logs.push(newLog);
-  setData('sideEffectLogs', logs);
+  if (!dateTime) { showToast('กรุณาระบุวันเวลา'); return; }
+  if (symptoms.length === 0) { showToast('กรุณาเลือกอาการอย่างน้อย 1 อย่าง'); return; }
+
+  let maxWeight = 0;
+  document.querySelectorAll('#sideEffectSymptomsList input:checked').forEach(i => {
+    maxWeight = Math.max(maxWeight, parseInt(i.dataset.weight));
+  });
+  const severity = maxWeight;
+
+  const logs = getData('sideEffects');
+  const entry = { id: genId(), dateTime, medName, symptoms, severity, notes };
+  logs.push(entry);
+  setData('sideEffects', logs);
 
   // ส่งข้อมูลไป Google Sheets
-  await syncDataToSheet('side_effect', {
-    date, suspectedMeds: meds, symptoms, severity, notes
+  syncToSheet('logSideEffect', {
+    dateTime: dateTime,
+    medName: medName,
+    symptoms: symptoms.join(', '),
+    severity: SIDE_EFFECT_SEVERITY_DESCRIPTIONS[severity].label,
+    notes: notes
   });
 
   closeModal('sideEffectModal');
   renderAssess();
-  showToast('บันทึกผลข้างเคียงเรียบร้อยแล้ว');
+  showSeverityResult(severity, SIDE_EFFECT_SEVERITY_DESCRIPTIONS);
+}
+
+function showSeverityResult(level, descSource) {
+  const data = descSource[level];
+  document.getElementById('resultTitle').textContent = data.label;
+  document.getElementById('resultTitle').style.color = data.color;
+  document.getElementById('resultDesc').textContent = data.desc;
+  document.getElementById('resultRef').textContent = data.ref;
+  showModal('severityResultModal');
+}
+
+/* ===== LEARN ===== */
+const LEARN_TOPICS = [
+  { id:'what-is-seizure', icon:'fa-bolt', color:'var(--accent)', bg:'var(--accent-soft)', title:'อาการชักคืออะไร', sub:'ความรู้พื้นฐาน, ชนิดของอาการชัก, สาเหตุ' },
+  { id:'why-aeds', icon:'fa-pills', color:'var(--primary)', bg:'#E0F4F4', title:'ทำไมต้องกินยากันชัก', sub:'เหตุผล, ประโยชน์, กลุ่มผู้ป่วยที่ต้องใช้ยา' },
+  { id:'tbi-criteria', icon:'fa-shield-halved', color:'#6366F1', bg:'#EEF2FF', title:'เกณฑ์การให้ยาหลัง Head Injury', sub:'Criteria, งานวิจัย, แนวทางปฏิบัติ' },
+  { id:'side-effects', icon:'fa-exclamation-triangle', color:'var(--warning)', bg:'var(--warning-light)', title:'ผลข้างเคียงยากันชัก', sub:'อาการที่ควรสังเกต, เมื่อไหร่ควรพบแพทย์' },
+  { id:'missed-dose-guide', icon:'fa-circle-question', color:'#EC4899', bg:'#FDF2F8', title:'ถ้าลืมกินยากันชักควรทำอย่างไร', sub:'คำแนะนำเมื่อลืมกินยา, หลักปฏิบัติ' },
+  { id:'seizure-first-aid', icon:'fa-heart-pulse', color:'var(--danger)', bg:'var(--danger-light)', title:'การปฐมพยาบาลเมื่อมีอาการชัก', sub:'สิ่งที่ควรทำ/ไม่ควรทำ สำหรับผู้ดูแล' },
+  { id:'self-observation', icon:'fa-eye', color:'#0EA5E9', bg:'#F0F9FF', title:'การสังเกตอาการตนเอง', sub:'สัญญาณเตือนก่อนชัก, การบันทึกอาการ' },
+  { id:'research-evidence', icon:'fa-file-lines', color:'#8B5CF6', bg:'#F5F3FF', title:'หลักฐานเชิงประจักษ์และงานวิจัย', sub:'Systematic reviews, Practice guidelines' },
+];
+
+function renderLearnTopics() {
+  document.getElementById('learnTopicsList').innerHTML = LEARN_TOPICS.map(t =>
+    `<div class="topic-card" onclick="showLearnDetail('${t.id}')">
+      <div class="topic-icon" style="background:${t.bg};color:${t.color}"><i class="fas ${t.icon}"></i></div>
+      <div class="topic-info"><div class="topic-title">${t.title}</div><div class="topic-sub">${t.sub}</div></div>
+      <i class="fas fa-chevron-right" style="color:var(--text3)"></i>
+    </div>`
+  ).join('') + `<div class="disclaimer-card"><i class="fas fa-info-circle"></i><p>ข้อมูลในหน้านี้จัดทำเพื่อการให้ความรู้ ไม่ใช่การวินิจฉัยหรือรักษาโรค กรุณาปรึกษาแพทย์สำหรับข้อมูลเฉพาะบุคคล</p></div>`;
+}
+
+const LEARN_CONTENT = {
+  'what-is-seizure': { title:'อาการชักคืออะไร', sections:[
+    { title:'อาการชักคืออะไร?', body:'อาการชัก (Seizure) คือภาวะที่เกิดจากกระแสไฟฟ้าในสมองทำงานผิดปกติอย่างฉับพลัน ส่งผลให้เกิดอาการต่างๆ เช่น กล้ามเนื้อเกร็งกระตุก หมดสติ ตาค้าง หรือพฤติกรรมผิดปกติชั่วคราว' },
+    { title:'ชนิดของอาการชัก', body:'1. Generalized seizures: อาการชักทั้งตัว รวมถึง Tonic-clonic (เกร็งกระตุก), Absence (เหม่อ), Myoclonic (กระตุกสั้นๆ)\n\n2. Focal seizures: อาการชักเฉพาะที่ อาจมีหรือไม่มีการเปลี่ยนแปลงระดับความรู้สึกตัว\n\n3. Unknown onset: อาการชักที่ไม่ทราบจุดเริ่มต้น', ref:'Fisher RS, et al. ILAE official report: a practical clinical definition of epilepsy. Epilepsia. 2014;55(4):475-482.' },
+    { title:'โรคลมชัก (Epilepsy) คืออะไร?', body:'โรคลมชักคือภาวะที่มีอาการชักซ้ำตั้งแต่ 2 ครั้งขึ้นไป โดยไม่มีสาเหตุกระตุ้นเฉพาะเจาะจง (unprovoked seizures) หรือมีอาการชักครั้งเดียวแต่มีความเสี่ยงสูงที่จะเกิดซ้ำ', ref:'International League Against Epilepsy (ILAE) Classification, 2017.' },
+  ]},
+  'why-aeds': { title:'ทำไมต้องกินยากันชัก', sections:[
+    { title:'เหตุผลที่ต้องกินยากันชัก', body:'ยากันชัก (Antiepileptic Drugs: AEDs) ใช้เพื่อ:\n\n1. รักษาโรคลมชัก (Epilepsy) ป้องกันอาการชักซ้ำ\n2. ป้องกันอาการชักเฉียบพลันหลังบาดเจ็บที่ศีรษะ (Head injury/TBI) ในผู้ที่มีความเสี่ยงสูง\n3. ป้องกันอาการชักหลังผ่าตัดสมอง' },
+    { title:'ประโยชน์ของการกินยาสม่ำเสมอ', body:'- ลดความถี่ของอาการชัก\n- ป้องกันภาวะชักต่อเนื่อง (Status epilepticus) ซึ่งเป็นอันตรายถึงชีวิต\n- ช่วยให้ดำเนินชีวิตประจำวันได้ปกติ\n- ลดความเสี่ยงการบาดเจ็บจากอาการชัก\n- ป้องกันความเสียหายต่อสมองจากการชักซ้ำ', ref:'Kwan P, et al. Early identification of refractory epilepsy. N Engl J Med. 2000;342(5):314-319.' },
+    { title:'กลุ่มผู้ป่วยที่ใช้ยากันชัก', body:'- ผู้ที่ได้รับการวินิจฉัยว่าเป็นโรคลมชัก\n- ผู้ป่วย TBI/ภาวะสมองบาดเจ็บที่มีความเสี่ยงสูง\n- ผู้ป่วยหลังผ่าตัดสมอง\n- ผู้ป่วยที่อยู่ในระยะฟื้นฟูหลังอุบัติเหตุทางสมอง' },
+  ]},
+  'tbi-criteria': { title:'เกณฑ์การให้ยาหลัง Head Injury', sections:[
+    { title:'เกณฑ์ความเสี่ยงสูงในการเกิดชักหลัง TBI', body:'ผู้ป่วยที่มีปัจจัยเสี่ยงต่อไปนี้ ควรได้รับยากันชักเพื่อป้องกัน:\n\n- Intracranial hemorrhage (เลือดออกในสมอง)\n- Depressed skull fracture (กะโหลกยุบ)\n- Penetrating brain injury (บาดเจ็บแบบทะลุ)\n- Prolonged loss of consciousness > 24 ชั่วโมง\n- GCS < 10\n- อายุ > 65 ปี\n- ประวัติเป็นโรคลมชักมาก่อน', ref:'Temkin NR, et al. A randomized, double-blind study of phenytoin for the prevention of post-traumatic seizures. N Engl J Med. 1990;323(8):497-502.' },
+    { title:'Early vs Late Post-traumatic Seizures', body:'Early seizures: เกิดภายใน 7 วันหลังบาดเจ็บ\n- ยากันชักมีประสิทธิภาพในการป้องกัน early seizures\n- ลดการเกิดชักได้อย่างมีนัยสำคัญทางสถิติ\n\nLate seizures: เกิดหลัง 7 วัน\n- ยากันชักไม่ได้ลดการเกิด late seizures อย่างมีนัยสำคัญ\n- แนะนำให้ใช้ยาป้องกันเป็นเวลา 7 วัน (ในกลุ่มเสี่ยงสูง)', ref:'Chang BS, Lowenstein DH. Practice parameter: antiepileptic drug prophylaxis in severe traumatic brain injury. Neurology. 2003;60(1):10-16. (AAN Practice Parameter)' },
+    { title:'แนวทางจาก Cochrane Systematic Review', body:'"การให้ยากันชักหลัง traumatic brain injury ช่วยลดการเกิดอาการชักภายใน 7 วันแรกในผู้ที่มีความเสี่ยงสูง แต่ไม่ลดการชักในระยะยาว"\n\nLevetiracetam และ Phenytoin มีประสิทธิภาพเทียบเคียงกันในการป้องกัน early seizures หลัง TBI', ref:'Thompson K, et al. Pharmacological treatments for preventing epilepsy following traumatic head injury. Cochrane Database Syst Rev. 2015.\n\nInaba K, et al. A prospective multicenter comparison of levetiracetam versus phenytoin for early posttraumatic seizure prophylaxis. J Trauma Acute Care Surg. 2013;74(3):766-771.' },
+  ]},
+  'side-effects': { title:'ผลข้างเคียงยากันชัก', sections:[
+    { title:'ผลข้างเคียงที่พบได้บ่อย (ทุกยา)', body:'ยากันชักทุกตัวอาจทำให้เกิด:\n\n- เวียนศีรษะ / มึนงง\n- ง่วงนอน / อ่อนเพลีย\n- คลื่นไส้ / อาเจียน\n- ปวดศีรษะ\n- ตาพร่า / เห็นภาพซ้อน\n- เดินเซ / ทรงตัวไม่ดี', ref:'Perucca P, Gilliam FG. Adverse effects of antiepileptic drugs. Lancet Neurol. 2012;11(9):792-802.' },
+    { title:'ผลข้างเคียงเฉพาะยาแต่ละตัว', body:'Phenytoin (เฟนิโทอิน):\n• เหงือกบวม (Gingival Hyperplasia) — พบบ่อย\n• ขนดก / ผมขึ้นมาก (Hirsutism) — พบได้\n• เดินเซ / ทรงตัวไม่ดี (Ataxia) — พบบ่อย\n• ตาพร่า / เห็นภาพซ้อน — พบบ่อย\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nCarbamazepine (คาร์บามาซีพีน):\n• โซเดียมในเลือดต่ำ (Hyponatremia) — พบได้\n• เม็ดเลือดขาวต่ำ (Leukopenia) — พบได้\n• ผื่นผิวหนัง / SJS (หายาก แต่อันตราย)\n\nValproate (วัลโปรเอต):\n• น้ำหนักเพิ่ม — พบบ่อย\n• ผมร่วง — พบบ่อย\n• มือสั่น (Tremor) — พบบ่อย\n• ตับอักเสบ (Hepatotoxicity) — หายาก แต่อันตราย\n• ตับอ่อนอักเสบ (Pancreatitis) — หายาก แต่อันตราย\n\nLevetiracetam (ลีเวไทราซีแทม):\n• หงุดหงิด / อารมณ์แปรปรวน — พบบ่อย\n• นอนไม่หลับ — พบบ่อย\n• ซึมเศร้า / ก้าวร้าว — พบได้\n\nLamotrigine (ลาโมไทรจีน):\n• ผื่นผิวหนัง (พบบ่อยในเด็ก)\n• ผื่นรุนแรง / SJS (หายาก แต่อันตราย)\n• ปวดศีรษะ / เวียนศีรษะ\n\nTopiramate (โทพิราเมท):\n• ความจำ / สมาธิลดลง — พบบ่อย\n• เบื่ออาหาร / น้ำหนักลด — พบบ่อย\n• นิ่วในไต — พบได้\n• ชาปลายมือปลายเท้า — พบได้' },
+    { title:'เมื่อไหร่ควรพบแพทย์ทันที?', body:'หากมีอาการรุนแรงดังนี้:\n- ผื่นผิวหนังลามรุนแรง ปากพอง มีไข้ (เสี่ยง SJS)\n- ตัวเหลือง ตาเหลือง ปวดท้องรุนแรง\n- มีความคิดอยากทำร้ายตนเองหรือซึมเศร้าผิดปกติ\n- ชักซ้ำบ่อยขึ้น หรือชักไม่หยุด' },
+  ]},
+  'missed-dose-guide': { title:'ถ้าลืมกินยากันชักควรทำอย่างไร', sections:[
+    { title:'หลักการทั่วไปเมื่อลืมกินยา', body:'1. นึกได้ทันที: ให้รีบกินยามื้อที่ลืมทันที\n2. นึกได้เมื่อใกล้เวลามื้อถัดไป: ให้ข้ามมื้อที่ลืมไปเลย และกินมื้อถัดไปตามเวลาปกติ\n3. ห้ามกินยาเพิ่มเป็น 2 เท่า: เพื่อชดเชยมื้อที่ลืม เพราะอาจเกิดพิษจากยาเกินขนาด' },
+    { title:'ตัวอย่างการคำนวณ (กฎครึ่งหนึ่งของระยะห่าง)', body:'เช่น ถ้าต้องกินยาทุก 12 ชั่วโมง (เช้า-เย็น) ครึ่งหนึ่งคือ 6 ชั่วโมง\n- ถ้านึกได้ภายใน 6 ชั่วโมงหลังเวลาปกติ -> กินทันที\n- ถ้านึกได้หลัง 6 ชั่วโมงไปแล้ว -> ข้ามไปกินมื้อเย็นเลย' },
+  ]},
+  'seizure-first-aid': { title:'การปฐมพยาบาลเมื่อมีอาการชัก', sections:[
+    { title:'สิ่งที่ "ควรทำ" (DOs)', body:'- ตั้งสติ และดูเวลาที่เริ่มชัก\n- ประคองผู้ป่วยลงนอนในที่ปลอดภัย\n- คลายเสื้อผ้าให้หลวม และตะเขียงตัวผู้ป่วยไปด้านข้าง (ป้องกันสำลัก)\n- หาของนิ่มๆ รองศีรษะ\n- อยู่กับผู้ป่วยจนกว่าจะฟื้นสติสมบูรณ์' },
+    { title:'สิ่งที่ "ไม่ควรทำ" (DON\'Ts)', body:'- ห้ามเอาสิ่งของงัดปาก หรือให้ผู้ป่วยกัด (เช่น ช้อน นิ้วมือ ผ้า)\n- ห้ามกดหรือฝืนอาการเกร็งกระตุก\n- ห้ามกรอกยาหรือน้ำเข้าปากขณะชัก\n- ห้ามผายปอด (ยกเว้นชักหยุดแล้วแต่ไม่หายใจ)' },
+    { title:'เมื่อไหร่ควรเรียกรถพยาบาล (1669)?', body:'- ชักนานเกิน 5 นาที\n- ชักซ้ำโดยที่ยังไม่ฟื้นสติจากครั้งแรก\n- ได้รับบาดเจ็บขณะชัก\n- ชักในน้ำ\n- เป็นการชักครั้งแรกในชีวิต\n- ตั้งครรภ์ หรือมีโรคประจำตัวร้ายแรง' },
+  ]},
+  'self-observation': { title:'การสังเกตอาการตนเอง', sections:[
+    { title:'สัญญาณเตือนก่อนชัก (Aura)', body:'ผู้ป่วยบางรายอาจมีอาการเตือนก่อนชัก เช่น:\n- รู้สึกเดจาวู (เหมือนเคยเห็นมาก่อน)\n- ได้กลิ่นหรือรสชาติแปลกๆ\n- รู้สึกวูบในท้อง\n- มีอาการชาหรือกระตุกเฉพาะที่\n\nการบันทึกอาการเตือนช่วยให้แพทย์ระบุจุดเริ่มต้นของกระแสไฟฟ้าผิดปกติในสมองได้' },
+    { title:'ปัจจัยกระตุ้นที่ควรเลี่ยง', body:'- การอดนอน / พักผ่อนไม่พอ (พบบ่อยที่สุด)\n- ความเครียดสะสม\n- การลืมกินยา\n- แสงระยิบระยับ หรือไฟกะพริบ\n- การดื่มแอลกอฮอล์\n- อาการเจ็บป่วย มีไข้' },
+  ]},
+  'research-evidence': { title:'หลักฐานเชิงประจักษ์และงานวิจัย', sections:[
+    { title:'ประสิทธิภาพของยากันชัก', body:'งานวิจัยยืนยันว่ายากันชักสามารถควบคุมอาการชักได้สมบูรณ์ในผู้ป่วยประมาณ 60-70% เมื่อใช้ยาตัวแรกหรือตัวที่สองอย่างถูกต้อง', ref:'Kwan P, Brodie MJ. Early identification of refractory epilepsy. N Engl J Med. 2000.' },
+    { title:'Levetiracetam vs Phenytoin หลัง TBI', body:'การศึกษาเปรียบเทียบขนาดใหญ่พบว่า Levetiracetam มีประสิทธิภาพเท่ากับ Phenytoin ในการป้องกันการชักระยะเฉียบพลันหลังอุบัติเหตุทางสมอง โดยมีผลข้างเคียงด้านการทำงานของสมองน้อยกว่า แต่ราคาสูงกว่า', ref:'Zafar SN, et al. Phenytoin versus levetiracetam for seizure prophylaxis after traumatic brain injury. J Trauma Acute Care Surg. 2012.' },
+  ]}
+};
+
+function showLearnDetail(id) {
+  const content = LEARN_CONTENT[id];
+  if (!content) return;
+  document.getElementById('learnDetailTitle').textContent = content.title;
+  document.getElementById('learnDetailBody').innerHTML = content.sections.map(s => `
+    <div class="learn-section">
+      <h3>${s.title}</h3>
+      <p>${s.body.replace(/\n/g, '<br>')}</p>
+      ${s.ref ? `<div class="learn-ref">${s.ref}</div>` : ''}
+    </div>
+  `).join('');
+  showTab('learnDetail');
 }
 
 /* ===== PROFILE ===== */
 function renderProfile() {
-  const profile = getObj('profile') || {};
+  const profile = getObj('profile');
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  const hn = users[currentUser]?.hn || '';
+  
   const sections = [
-    {
-      title: 'ข้อมูลทั่วไป',
-      rows: [
-        { key: 'name', label: 'ชื่อ-นามสกุล', placeholder: 'ยังไม่ได้ระบุ' },
-        { key: 'age', label: 'อายุ', placeholder: 'ยังไม่ได้ระบุ', type: 'number' },
-        { key: 'diagnosis', label: 'การวินิจฉัย', placeholder: 'ยังไม่ได้ระบุ' }
-      ]
-    },
-    {
-      title: 'การนัดหมาย',
-      rows: [
-        { key: 'doctorName', label: 'แพทย์ผู้รักษา', placeholder: 'ยังไม่ได้ระบุ' },
-        { key: 'doctorPhone', label: 'เบอร์โทรแผนก/รพ.', placeholder: 'ยังไม่ได้ระบุ', type: 'tel' },
-        { key: 'nextAppointment', label: 'นัดครั้งถัดไป', placeholder: 'ยังไม่ได้ระบุ', type: 'date' }
-      ]
-    },
-    {
-      title: 'ติดต่อฉุกเฉิน',
-      rows: [
-        { key: 'emergencyContact', label: 'ผู้ติดต่อฉุกเฉิน', placeholder: 'ยังไม่ได้ระบุ' },
-        { key: 'emergencyPhone', label: 'เบอร์โทรฉุกเฉิน', placeholder: 'ยังไม่ได้ระบุ', type: 'tel' }
-      ]
-    }
+    { title: 'ข้อมูลส่วนตัว', rows: [
+      { label: 'ชื่อ-นามสกุล', key: 'name', placeholder: 'ระบุชื่อของคุณ' },
+      { label: 'อายุ', key: 'age', placeholder: 'ระบุอายุ', type: 'number' },
+      { label: 'HN (เลขประจำตัวผู้ป่วย)', key: 'hn', value: hn, readonly: true },
+      { label: 'การวินิจฉัย', key: 'diagnosis', placeholder: 'เช่น ลมชักหลังอุบัติเหตุ' }
+    ]},
+    { title: 'ข้อมูลการติดต่อฉุกเฉิน', rows: [
+      { label: 'ผู้ติดต่อฉุกเฉิน', key: 'emergencyContact', placeholder: 'ชื่อผู้ติดต่อ' },
+      { label: 'เบอร์โทรศัพท์', key: 'emergencyPhone', placeholder: '08x-xxx-xxxx', type: 'tel' }
+    ]},
+    { title: 'ข้อมูลการรักษา', rows: [
+      { label: 'แพทย์เจ้าของไข้', key: 'doctorName', placeholder: 'ชื่อแพทย์' },
+      { label: 'เบอร์โทรแผนก/รพ.', key: 'doctorPhone', placeholder: '0x-xxx-xxxx', type: 'tel' },
+      { label: 'วันนัดครั้งถัดไป', key: 'nextAppointment', placeholder: '', type: 'date' }
+    ]}
   ];
 
-  document.getElementById('profileContent').innerHTML = sections.map(section => `
-    <div class="detail-card">
-      <h4>${section.title}</h4>
-      <div class="profile-grid">
-        ${section.rows.map(r => `
-          <div class="profile-item">
-            <div class="profile-label">${r.label}</div>
-            ${editingProfile
-              ? `<input class="profile-input" id="pf_${r.key}" value="${profile[r.key]||''}" placeholder="${r.placeholder}" type="${r.type||'text'}">`
-              : `<span class="profile-value ${!profile[r.key]?'placeholder':''}">${profile[r.key] || r.placeholder}</span>`
-            }
-          </div>`).join('')}
+  document.getElementById('editProfileBtn').innerHTML = editingProfile ? '<i class="fas fa-save"></i> บันทึก' : '<i class="fas fa-edit"></i> แก้ไขข้อมูล';
+  
+  document.getElementById('profileContent').innerHTML = sections.map(s => `
+    <div class="profile-section">
+      <div class="profile-section-title">${s.title}</div>
+      <div class="profile-card">
+        ${s.rows.map(r => `
+        <div class="profile-row">
+          <span class="profile-label">${r.label}</span>
+          ${editingProfile && !r.readonly
+            ? `<input class="profile-input" id="pf_${r.key}" value="${profile[r.key] || ''}" placeholder="${r.placeholder}" type="${r.type || 'text'}">`
+            : `<span class="profile-value ${(!profile[r.key] && !r.value) ? 'placeholder' : ''}">${r.value || profile[r.key] || r.placeholder}</span>`
+          }
+        </div>`).join('')}
       </div>
     </div>`
   ).join('');
@@ -903,6 +857,9 @@ function toggleEditProfile() {
     setObj('profile', profile);
     editingProfile = false;
     showToast('บันทึกข้อมูลแล้ว');
+    
+    // ส่งข้อมูลโปรไฟล์ที่แก้ไขไป Google Sheets
+    syncToSheet('updateProfile', profile);
   } else {
     editingProfile = true;
   }
@@ -957,7 +914,7 @@ function renderMissedDoseContent() {
     </div>
     <div class="note-box">
       <i class="fas fa-info-circle"></i>
-      <p>หมายเหตุ: ยาบางชนิด เช่น Valproate (วัลโปรเอต), Phenytoin (เฟนิโทอิน), Carbamazepine (คาร์บามาซีพีน), Levetiracetam (ลีเวไทราซีแทม) อาจมีข้อแนะนำเฉพาะ แต่หลักใหญ่เหมือนกัน คือ กินทันทีที่นึกได้ ถ้าใกล้มื้อต่อไปให้ข้าม และไม่กินซ้ำสองเท่า</p>
+      <p>หมายเหตุ: ยาบางชนิด เช่น Valproate (วัลโปรเอต), Phenytoin (เฟนิโทอิน), Carbamazepine (คาร์บามาซีพีน), Levetiracetam (ลีเวไทราซีแทม) อาจมีข้อแนะนำเฉพาะ แต่หลักใหญ่เหมือนกัน คือ กินทันทีที่นึกได้ ถ้าใกลื้อต่อไปให้ข้าม และไม่กินซ้ำสองเท่า</p>
     </div>`;
 }
 
@@ -966,99 +923,6 @@ function calcMissedDose(hours) {
   const half = interval / 2;
   missedDoseStep = hours <= half ? 'take-now' : 'skip-wait';
   renderMissedDoseContent();
-}
-
-/* ===== SYMPTOM HELPERS ===== */
-function renderSeizureSymptoms() {
-  const container = document.getElementById('seizureSymptoms');
-  container.innerHTML = SEIZURE_SYMPTOMS.map(s => {
-    const sel = seizureSymptoms.includes(s.name);
-    return `<div class="chip ${sel?'active':''}" onclick="toggleSeizureSymptom('${s.name}')">${s.name}</div>`;
-  }).join('');
-}
-function toggleSeizureSymptom(name) {
-  if (seizureSymptoms.includes(name)) seizureSymptoms = seizureSymptoms.filter(s=>s!==name);
-  else seizureSymptoms.push(name);
-  renderSeizureSymptoms();
-  calculateSeizureSeverity();
-}
-function calculateSeizureSeverity() {
-  const duration = document.getElementById('seizureDuration').value;
-  let score = 0;
-  if (duration === '> 5 นาที') score = 5;
-  else if (duration === '2-5 นาที') score = 4;
-  else if (duration === '1-2 นาที') score = 3;
-  else if (duration === '30-60 วินาที') score = 2;
-  else if (duration === '< 30 วินาที') score = 1;
-  seizureSymptoms.forEach(name => {
-    const s = SEIZURE_SYMPTOMS.find(x => x.name === name);
-    if (s && s.weight > score) score = s.weight;
-  });
-  const sev = SEVERITY_DESCRIPTIONS[score || 1];
-  document.getElementById('seizureSevBadge').textContent = score || '1';
-  document.getElementById('seizureSevBadge').style.background = sev.color;
-  document.getElementById('seizureSevLabel').textContent = sev.label;
-  document.getElementById('seizureSeverityDesc').textContent = sev.desc;
-}
-
-function renderSideEffectSymptoms() {
-  const container = document.getElementById('sideEffectSymptoms');
-  container.innerHTML = SIDE_EFFECTS_LIST.map(s => {
-    const sel = sideEffectSymptoms.includes(s.name);
-    return `<div class="chip ${sel?'active':''}" onclick="toggleSideEffectSymptom('${s.name}')">${s.name}</div>`;
-  }).join('');
-}
-function toggleSideEffectSymptom(name) {
-  if (sideEffectSymptoms.includes(name)) sideEffectSymptoms = sideEffectSymptoms.filter(s=>s!==name);
-  else sideEffectSymptoms.push(name);
-  renderSideEffectSymptoms();
-  calculateSideEffectSeverity();
-}
-function calculateSideEffectSeverity() {
-  let score = 0;
-  sideEffectSymptoms.forEach(name => {
-    const s = SIDE_EFFECTS_LIST.find(x => x.name === name);
-    if (s && s.weight > score) score = s.weight;
-  });
-  const sev = SIDE_EFFECT_SEVERITY_DESCRIPTIONS[score || 1];
-  document.getElementById('sideEffectSevBadge').textContent = score || '1';
-  document.getElementById('sideEffectSevBadge').style.background = sev.color;
-  document.getElementById('sideEffectSevLabel').textContent = sev.label;
-  document.getElementById('sideEffectSeverityDesc').textContent = sev.desc;
-}
-
-function renderSideEffectMeds() {
-  const meds = getData('medications');
-  document.getElementById('sideEffectMeds').innerHTML = meds.map(m => {
-    const sel = sideEffectMeds.includes(m.name);
-    return `<div class="chip ${sel?'active':''}" onclick="toggleSideEffectMed('${m.name}')">${m.name}</div>`;
-  }).join('');
-}
-function toggleSideEffectMed(name) {
-  if (sideEffectMeds.includes(name)) sideEffectMeds = sideEffectMeds.filter(m=>m!==name);
-  else sideEffectMeds.push(name);
-  renderSideEffectMeds();
-}
-
-function initSeizureModal() {
-  const now = new Date();
-  document.getElementById('seizureDate').textContent = now.toLocaleDateString('th-TH');
-  document.getElementById('seizureTime').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-  document.getElementById('seizureDuration').value = '';
-  document.getElementById('seizureNotes').value = '';
-  seizureSymptoms = [];
-  renderSeizureSymptoms();
-  calculateSeizureSeverity();
-}
-
-function initSideEffectModal() {
-  document.getElementById('sideEffectDate').textContent = new Date().toLocaleDateString('th-TH');
-  document.getElementById('sideEffectNotes').value = '';
-  sideEffectSymptoms = [];
-  sideEffectMeds = [];
-  renderSideEffectMeds();
-  renderSideEffectSymptoms();
-  calculateSideEffectSeverity();
 }
 
 /* ===== MODALS ===== */
@@ -1074,11 +938,11 @@ function closeModal(id) {
 
 /* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
-  const savedUser = localStorage.getItem('seizguard_currentUser');
-  if (savedUser) {
+  const saved = localStorage.getItem('seizguard_currentUser');
+  if (saved) {
     const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-    if (users[savedUser]) {
-      currentUser = savedUser;
+    if (users[saved]) {
+      currentUser = saved;
       enterApp();
       return;
     }
