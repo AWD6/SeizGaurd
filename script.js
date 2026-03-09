@@ -404,11 +404,20 @@ function generateDailyLogs() {
   });
   setData('medLogs', logs);
     const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    sendToGoogleForm({
-      medName: med ? med.name : 'Unknown',
-      date: logs[idx].date,
-      status: 'กินแล้ว',
-      actualTime: logs[idx].takenTime
+    const profile = getObj('profile') || {};
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'logMedication',
+        username: currentUser,
+        hn: profile.hn || '',
+        medName: med ? med.name : 'Unknown',
+        date: logs[idx].date,
+        scheduledTime: logs[idx].scheduledTime,
+        takenTime: logs[idx].takenTime,
+        timestamp: new Date().toISOString()
+      })
     });
 }
 
@@ -496,11 +505,20 @@ function takePill(logId) {
     logs[idx].takenTime = getTimeStr();
     setData('medLogs', logs);
     const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    sendToGoogleForm({
-      medName: med ? med.name : 'Unknown',
-      date: logs[idx].date,
-      status: 'กินแล้ว',
-      actualTime: logs[idx].takenTime
+    const profile = getObj('profile') || {};
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'logMedication',
+        username: currentUser,
+        hn: profile.hn || '',
+        medName: med ? med.name : 'Unknown',
+        date: logs[idx].date,
+        scheduledTime: logs[idx].scheduledTime,
+        takenTime: logs[idx].takenTime,
+        timestamp: new Date().toISOString()
+      })
     });
     renderHome();
     showToast('บันทึกการกินยาแล้ว');
@@ -833,10 +851,22 @@ function saveSeizureLog() {
   const logs = getData('seizureLogs');
   logs.push(log);
   setData('seizureLogs', logs);
-  sendToGoogleForm({
-    date: log.date + ' ' + log.time,
-    seizure: log.symptoms.join(', '),
-    seizureSeverity: log.severity
+  const profile = getObj('profile') || {};
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({
+      action: 'logSeizure',
+      username: currentUser,
+      hn: profile.hn || '',
+      date: log.date,
+      time: log.time,
+      duration: log.duration,
+      severity: log.severity,
+      symptoms: log.symptoms.join(', '),
+      notes: log.notes,
+      timestamp: new Date().toISOString()
+    })
   });
   closeModal('seizureModal');
   renderAssess();
@@ -967,12 +997,22 @@ function saveSideEffectLog() {
   const logs = getData('sideEffectLogs');
   logs.push(log);
   setData('sideEffectLogs', logs);
+  const profile = getObj('profile') || {};
   const med = getData('medications').find(m => m.id === log.medicationId);
-  sendToGoogleForm({
-    date: log.date,
-    sideEffect: med ? med.name : 'Unknown',
-    sideEffectType: log.effects.join(', '),
-    sideEffectSeverity: log.severity
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({
+      action: 'logSideEffect',
+      username: currentUser,
+      hn: profile.hn || '',
+      medName: med ? med.name : 'Unknown',
+      date: log.date,
+      effects: log.effects.join(', '),
+      severity: log.severity,
+      notes: log.notes,
+      timestamp: new Date().toISOString()
+    })
   });
   closeModal('sideEffectModal');
   renderAssess();
@@ -1269,22 +1309,6 @@ function addGoogleSheetButton() {
 window.addEventListener('load', () => {
   setTimeout(addGoogleSheetButton, 500);
 });
-
-function sendToGoogleForm(data) {
-  const formData = new FormData();
-  for (const key in data) {
-    formData.append(FORM_FIELDS[key] || key, data[key]);
-  }
-  formData.append(FORM_FIELDS.username, currentUser);
-  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  formData.append(FORM_FIELDS.hn, users[currentUser]?.hn || '');
-  
-  fetch(GOOGLE_FORM_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: formData
-  });
-}
 
 function deleteSeizureLog(id) {
   if (confirm('ต้องการลบบันทึกอาการชักนี้หรือไม่?')) {
