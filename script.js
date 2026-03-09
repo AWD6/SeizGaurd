@@ -1,3 +1,4 @@
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
 /* ===== SeizGuard - ชักไม่ซ้ำ ===== */
 
 const COMMON_AEDS = [
@@ -269,16 +270,40 @@ function showToast(msg) {
 }
 
 /* ===== AUTH ===== */
-function handleLogin() {
+async function handleLogin() {
   const u = document.getElementById('loginUsername').value.trim();
   const hn = document.getElementById('loginHN').value.trim();
   if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
+  
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  if (!users[u]) { showToast('ไม่พบผู้ใช้นี้ กรุณาลงทะเบียนก่อน'); return; }
-  if (users[u].hn !== hn) { showToast('เลขที่โรงพยาบาลไม่ถูกต้อง'); return; }
-  currentUser = u;
-  localStorage.setItem('seizguard_currentUser', u);
-  enterApp();
+  if (users[u] && users[u].hn === hn) {
+    currentUser = u;
+    localStorage.setItem('seizguard_currentUser', u);
+    enterApp();
+    return;
+  }
+  
+  showToast('กำลังตรวจสอบข้อมูลข้ามเครื่อง...');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(hn)}`);
+    const data = await res.json();
+    if (data.exists) {
+      users[u] = { hn: hn };
+      localStorage.setItem('seizguard_users', JSON.stringify(users));
+      if (data.userData) {
+        for (const key in data.userData) {
+          localStorage.setItem(`seizguard_${key}_${u}`, JSON.stringify(data.userData[key]));
+        }
+      }
+      currentUser = u;
+      localStorage.setItem('seizguard_currentUser', u);
+      enterApp();
+    } else {
+      showToast('ไม่พบผู้ใช้นี้ หรือข้อมูลไม่ถูกต้อง');
+    }
+  } catch (e) {
+    showToast('การเชื่อมต่อผิดพลาด');
+  }
 }
 
 function handleRegister() {
@@ -384,6 +409,8 @@ function generateDailyLogs() {
     });
   });
   setData('medLogs', logs);
+    const medForLog = getData('medications').find(m => m.id === logs[idx].medicationId);
+    if (logs[idx].takenTime) sendLogToCloud('logMedication', { medName: medForLog ? medForLog.name : 'Unknown', date: logs[idx].date, scheduledTime: logs[idx].scheduledTime, takenTime: logs[idx].takenTime });
 }
 
 function renderAdherence() {
@@ -800,6 +827,7 @@ function saveSeizureLog() {
   const logs = getData('seizureLogs');
   logs.push(log);
   setData('seizureLogs', logs);
+  sendLogToCloud('logSeizure', { date: log.date, time: log.time, duration: log.duration, severity: log.severity, symptoms: log.symptoms.join(', '), notes: log.notes });
   closeModal('seizureModal');
   renderAssess();
   showToast('บันทึกอาการชักแล้ว');
@@ -929,6 +957,8 @@ function saveSideEffectLog() {
   const logs = getData('sideEffectLogs');
   logs.push(log);
   setData('sideEffectLogs', logs);
+  const medForSide = getData('medications').find(m => m.id === log.medicationId);
+  sendLogToCloud('logSideEffect', { medName: medForSide ? medForSide.name : 'Unknown', date: log.date, effects: log.effects.join(', '), severity: log.severity, notes: log.notes });
   closeModal('sideEffectModal');
   renderAssess();
   showToast('บันทึกผลข้างเคียงแล้ว');
@@ -1225,95 +1255,8 @@ window.addEventListener('load', () => {
   setTimeout(addGoogleSheetButton, 500);
 });
 
-// --- SEIZGUARD SYNC & LOGGING EXTENSIONS (APPENDED) ---
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
-
-// Override handleLogin to support Cross-Device Sync
-const originalHandleLogin = window.handleLogin;
-window.handleLogin = async function() {
-  const u = document.getElementById('loginUsername').value.trim();
-  const hn = document.getElementById('loginHN').value.trim();
-  if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
-  
-  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  // Check local first
-  if (users[u] && users[u].hn === hn) {
-    currentUser = u;
-    localStorage.setItem('seizguard_currentUser', u);
-    enterApp();
-    return;
-  }
-  
-  // If not found locally, check Google Sheets
-  showToast('กำลังตรวจสอบข้อมูลข้ามเครื่อง...');
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(hn)}`);
-    const data = await res.json();
-    if (data.exists) {
-      users[u] = { hn: hn };
-      localStorage.setItem('seizguard_users', JSON.stringify(users));
-      // Sync all data from cloud to local
-      if (data.userData) {
-        for (const key in data.userData) {
-          localStorage.setItem(`seizguard_${key}_${u}`, JSON.stringify(data.userData[key]));
-        }
-      }
-      currentUser = u;
-      localStorage.setItem('seizguard_currentUser', u);
-      enterApp();
-    } else {
-      showToast('ไม่พบผู้ใช้นี้ หรือข้อมูลไม่ถูกต้อง');
-    }
-  } catch (e) {
-    showToast('การเชื่อมต่อผิดพลาด');
-  }
-};
-
-// Logging Interceptors (Send to Google Sheets)
-const originalSetData = window.setData;
-window.setData = function(key, val) {
-  originalSetData(key, val);
-  
-  // Detect specific save actions and send to Google Sheets
-  if (key === 'medLogs') {
-    const lastLog = val[val.length - 1];
-    if (lastLog && lastLog.takenTime) {
-      const med = getData('medications').find(m => m.id === lastLog.medicationId);
-      sendLog('logMedication', {
-        medName: med ? med.name : 'Unknown',
-        date: lastLog.date,
-        scheduledTime: lastLog.scheduledTime,
-        takenTime: lastLog.takenTime
-      });
-    }
-  } else if (key === 'seizureLogs') {
-    const lastLog = val[val.length - 1];
-    if (lastLog) {
-      sendLog('logSeizure', {
-        date: lastLog.date,
-        time: lastLog.time,
-        duration: lastLog.duration,
-        severity: lastLog.severity,
-        symptoms: lastLog.symptoms.join(', '),
-        notes: lastLog.notes
-      });
-    }
-  } else if (key === 'sideEffectLogs') {
-    const lastLog = val[val.length - 1];
-    if (lastLog) {
-      const med = getData('medications').find(m => m.id === lastLog.medicationId);
-      sendLog('logSideEffect', {
-        medName: med ? med.name : 'Unknown',
-        date: lastLog.date,
-        effects: lastLog.effects.join(', '),
-        severity: lastLog.severity,
-        notes: lastLog.notes
-      });
-    }
-  }
-};
-
-function sendLog(action, data) {
+// Helper to send logs to Google Sheets
+async function sendLogToCloud(action, data) {
   const profile = getObj('profile') || {};
   const payload = {
     action: action,
@@ -1322,40 +1265,17 @@ function sendLog(action, data) {
     ...data,
     timestamp: new Date().toISOString()
   };
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify(payload)
-  });
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+  } catch (e) { console.error('Cloud log failed', e); }
 }
 
-// Delete functionality (Appended UI buttons)
-const originalRenderAssess = window.renderAssess;
-window.renderAssess = function() {
-  originalRenderAssess();
-  // Inject delete buttons into the UI
-  document.querySelectorAll('#assessSeizureHistory .card-item').forEach((item, index) => {
-    const logs = getData('seizureLogs');
-    const logId = logs[logs.length - 1 - index].id;
-    const btn = document.createElement('button');
-    btn.innerHTML = '<i class="fas fa-times"></i>';
-    btn.style = 'float:right;background:none;border:none;color:var(--text3);cursor:pointer;padding:0 5px;';
-    btn.onclick = () => deleteLog('seizureLogs', logId);
-    item.querySelector('div').appendChild(btn);
-  });
-  
-  document.querySelectorAll('#assessSideEffectHistory .card-item').forEach((item, index) => {
-    const logs = getData('sideEffectLogs');
-    const logId = logs[logs.length - 1 - index].id;
-    const btn = document.createElement('button');
-    btn.innerHTML = '<i class="fas fa-times"></i>';
-    btn.style = 'float:right;background:none;border:none;color:var(--text3);cursor:pointer;padding:0 5px;';
-    btn.onclick = () => deleteLog('sideEffectLogs', logId);
-    item.querySelector('div').appendChild(btn);
-  });
-};
-
-function deleteLog(key, id) {
+// Helper to delete logs
+function deleteHistoryLog(key, id) {
   if (confirm('ต้องการลบบันทึกนี้หรือไม่?')) {
     let logs = getData(key);
     logs = logs.filter(l => l.id !== id);
