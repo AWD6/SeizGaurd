@@ -305,15 +305,11 @@ function handleRegister() {
   const hn = document.getElementById('loginHN').value.trim();
   if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
   if (u.length < 3) { showToast('ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร'); return; }
+  if (hn.length < 1) { showToast('กรุณากรอกเลขที่โรงพยาบาล'); return; }
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
   if (users[u]) { showToast('ชื่อผู้ใช้นี้ถูกใช้แล้ว'); return; }
   users[u] = { hn: hn };
   localStorage.setItem('seizguard_users', JSON.stringify(users));
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({ action: 'registerUser', username: u, hn: hn, timestamp: new Date().toISOString() })
-  });
   currentUser = u;
   localStorage.setItem('seizguard_currentUser', u);
   showToast('ลงทะเบียนสำเร็จ!');
@@ -408,20 +404,11 @@ function generateDailyLogs() {
   });
   setData('medLogs', logs);
     const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    const profile = getObj('profile') || {};
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'logMedication',
-        username: currentUser,
-        hn: profile.hn || '',
-        medName: med ? med.name : 'Unknown',
-        date: logs[idx].date,
-        scheduledTime: logs[idx].scheduledTime,
-        takenTime: logs[idx].takenTime,
-        timestamp: new Date().toISOString()
-      })
+    sendToGoogleForm({
+      medName: med ? med.name : 'Unknown',
+      date: logs[idx].date,
+      status: 'กินแล้ว',
+      actualTime: logs[idx].takenTime
     });
 }
 
@@ -509,20 +496,11 @@ function takePill(logId) {
     logs[idx].takenTime = getTimeStr();
     setData('medLogs', logs);
     const med = getData('medications').find(m => m.id === logs[idx].medicationId);
-    const profile = getObj('profile') || {};
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({
-        action: 'logMedication',
-        username: currentUser,
-        hn: profile.hn || '',
-        medName: med ? med.name : 'Unknown',
-        date: logs[idx].date,
-        scheduledTime: logs[idx].scheduledTime,
-        takenTime: logs[idx].takenTime,
-        timestamp: new Date().toISOString()
-      })
+    sendToGoogleForm({
+      medName: med ? med.name : 'Unknown',
+      date: logs[idx].date,
+      status: 'กินแล้ว',
+      actualTime: logs[idx].takenTime
     });
     renderHome();
     showToast('บันทึกการกินยาแล้ว');
@@ -855,22 +833,10 @@ function saveSeizureLog() {
   const logs = getData('seizureLogs');
   logs.push(log);
   setData('seizureLogs', logs);
-  const profile = getObj('profile') || {};
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({
-      action: 'logSeizure',
-      username: currentUser,
-      hn: profile.hn || '',
-      date: log.date,
-      time: log.time,
-      duration: log.duration,
-      severity: log.severity,
-      symptoms: log.symptoms.join(', '),
-      notes: log.notes,
-      timestamp: new Date().toISOString()
-    })
+  sendToGoogleForm({
+    date: log.date + ' ' + log.time,
+    seizure: log.symptoms.join(', '),
+    seizureSeverity: log.severity
   });
   closeModal('seizureModal');
   renderAssess();
@@ -1001,22 +967,12 @@ function saveSideEffectLog() {
   const logs = getData('sideEffectLogs');
   logs.push(log);
   setData('sideEffectLogs', logs);
-  const profile = getObj('profile') || {};
   const med = getData('medications').find(m => m.id === log.medicationId);
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({
-      action: 'logSideEffect',
-      username: currentUser,
-      hn: profile.hn || '',
-      medName: med ? med.name : 'Unknown',
-      date: log.date,
-      effects: log.effects.join(', '),
-      severity: log.severity,
-      notes: log.notes,
-      timestamp: new Date().toISOString()
-    })
+  sendToGoogleForm({
+    date: log.date,
+    sideEffect: med ? med.name : 'Unknown',
+    sideEffectType: log.effects.join(', '),
+    sideEffectSeverity: log.severity
   });
   closeModal('sideEffectModal');
   renderAssess();
@@ -1313,6 +1269,22 @@ function addGoogleSheetButton() {
 window.addEventListener('load', () => {
   setTimeout(addGoogleSheetButton, 500);
 });
+
+function sendToGoogleForm(data) {
+  const formData = new FormData();
+  for (const key in data) {
+    formData.append(FORM_FIELDS[key] || key, data[key]);
+  }
+  formData.append(FORM_FIELDS.username, currentUser);
+  const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
+  formData.append(FORM_FIELDS.hn, users[currentUser]?.hn || '');
+  
+  fetch(GOOGLE_FORM_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: formData
+  });
+}
 
 function deleteSeizureLog(id) {
   if (confirm('ต้องการลบบันทึกอาการชักนี้หรือไม่?')) {
