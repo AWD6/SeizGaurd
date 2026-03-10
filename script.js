@@ -1,4 +1,3 @@
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_SGSO86onWlLGPzVFtY0X3UnTe2lIIgzleKq-p7d-mXQVCEHHL5BrcnDCYKeGlfB-/exec';
 /* ===== SeizGuard - ชักไม่ซ้ำ ===== */
 
 const COMMON_AEDS = [
@@ -270,40 +269,16 @@ function showToast(msg) {
 }
 
 /* ===== AUTH ===== */
-async function handleLogin() {
+function handleLogin() {
   const u = document.getElementById('loginUsername').value.trim();
   const hn = document.getElementById('loginHN').value.trim();
   if (!u || !hn) { showToast('กรุณากรอกชื่อผู้ใช้ และเลขที่โรงพยาบาล'); return; }
-  
   const users = JSON.parse(localStorage.getItem('seizguard_users') || '{}');
-  if (users[u] && users[u].hn === hn) {
-    currentUser = u;
-    localStorage.setItem('seizguard_currentUser', u);
-    enterApp();
-    return;
-  }
-  
-  showToast('กำลังตรวจสอบข้อมูลข้ามเครื่อง...');
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=checkUser&username=${encodeURIComponent(u)}&hn=${encodeURIComponent(hn)}`);
-    const data = await res.json();
-    if (data.exists) {
-      users[u] = { hn: hn };
-      localStorage.setItem('seizguard_users', JSON.stringify(users));
-      if (data.userData) {
-        for (const key in data.userData) {
-          localStorage.setItem(`seizguard_${key}_${u}`, JSON.stringify(data.userData[key]));
-        }
-      }
-      currentUser = u;
-      localStorage.setItem('seizguard_currentUser', u);
-      enterApp();
-    } else {
-      showToast('ไม่พบผู้ใช้นี้ หรือข้อมูลไม่ถูกต้อง');
-    }
-  } catch (e) {
-    showToast('การเชื่อมต่อผิดพลาด');
-  }
+  if (!users[u]) { showToast('ไม่พบผู้ใช้นี้ กรุณาลงทะเบียนก่อน'); return; }
+  if (users[u].hn !== hn) { showToast('เลขที่โรงพยาบาลไม่ถูกต้อง'); return; }
+  currentUser = u;
+  localStorage.setItem('seizguard_currentUser', u);
+  enterApp();
 }
 
 function handleRegister() {
@@ -409,8 +384,6 @@ function generateDailyLogs() {
     });
   });
   setData('medLogs', logs);
-    const medForLog = getData('medications').find(m => m.id === logs[idx].medicationId);
-    if (logs[idx].takenTime) sendLogToCloud('logMedication', { medName: medForLog ? medForLog.name : 'Unknown', date: logs[idx].date, scheduledTime: logs[idx].scheduledTime, takenTime: logs[idx].takenTime });
 }
 
 function renderAdherence() {
@@ -827,7 +800,6 @@ function saveSeizureLog() {
   const logs = getData('seizureLogs');
   logs.push(log);
   setData('seizureLogs', logs);
-  sendLogToCloud('logSeizure', { date: log.date, time: log.time, duration: log.duration, severity: log.severity, symptoms: log.symptoms.join(', '), notes: log.notes });
   closeModal('seizureModal');
   renderAssess();
   showToast('บันทึกอาการชักแล้ว');
@@ -957,8 +929,6 @@ function saveSideEffectLog() {
   const logs = getData('sideEffectLogs');
   logs.push(log);
   setData('sideEffectLogs', logs);
-  const medForSide = getData('medications').find(m => m.id === log.medicationId);
-  sendLogToCloud('logSideEffect', { medName: medForSide ? medForSide.name : 'Unknown', date: log.date, effects: log.effects.join(', '), severity: log.severity, notes: log.notes });
   closeModal('sideEffectModal');
   renderAssess();
   showToast('บันทึกผลข้างเคียงแล้ว');
@@ -1041,7 +1011,7 @@ function renderProfile() {
 function toggleEditProfile() {
   if (editingProfile) {
     const profile = {};
-    ['name','hn','age','diagnosis','emergencyContact','emergencyPhone','doctorName','doctorPhone','nextAppointment'].forEach(k => {
+    ['name','age','diagnosis','emergencyContact','emergencyPhone','doctorName','doctorPhone','nextAppointment'].forEach(k => {
       const el = document.getElementById('pf_' + k);
       profile[k] = el ? el.value.trim() : '';
     });
@@ -1254,33 +1224,3 @@ function addGoogleSheetButton() {
 window.addEventListener('load', () => {
   setTimeout(addGoogleSheetButton, 500);
 });
-
-// Helper to send logs to Google Sheets
-async function sendLogToCloud(action, data) {
-  const profile = getObj('profile') || {};
-  const payload = {
-    action: action,
-    username: currentUser,
-    hn: profile.hn || '',
-    ...data,
-    timestamp: new Date().toISOString()
-  };
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify(payload)
-    });
-  } catch (e) { console.error('Cloud log failed', e); }
-}
-
-// Helper to delete logs
-function deleteHistoryLog(key, id) {
-  if (confirm('ต้องการลบบันทึกนี้หรือไม่?')) {
-    let logs = getData(key);
-    logs = logs.filter(l => l.id !== id);
-    setData(key, logs);
-    renderAssess();
-    showToast('ลบบันทึกแล้ว');
-  }
-}
